@@ -1,0 +1,3118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage />
+	<TimerPackage />
+	<AliasPackage />
+	<ActionPackage />
+	<ScriptPackage>
+		<Script isActive="yes" isFolder="no">
+			<name>QuillForge Config</name>
+			<packageName></packageName>
+			<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.config = dsl.quillforge.config or {
+  -- Names of your container that will contain books, parchment, 
+  -- quill, and ink
+  container = "hoard",
+
+  -- Names to interact with your quill that will be retrieved from 
+  -- the configured the container
+  quill = "quill",
+  
+  -- Names to interact with book for 5 pages or less. 
+  -- Shokono, 70 gold
+  thinBook = "thin book",
+  
+  -- Names to interact with book for 15 pages or less. 
+  -- Shokono, 250 gold
+  smallBook = "small book",
+  
+  -- Names to interact with book for &gt; 15 pages and &lt;= 40. 
+  -- Nordmaar, 1 blue 250 gold
+  thickBook = "thick book",
+  
+  -- Names to interact with ink. 
+  -- Shokono, 22 gold
+  inkType = "squid ink",
+  
+  -- Names to interact with parchment. 
+  -- Shokono, 10 gold
+  parchmentType = "rice parchment",
+  
+  -- This is used to make sure no line goes past this length, 
+  -- and used when auto wrapping paragraphs, if not
+  -- overriden in the book/document config
+  pageWidth = 76,
+  
+  -- Default number of empty lines before a TITLE, 
+  -- if not overriden in the book/document config
+  defaultTitleLinesBefore = 2,
+  
+  -- Default number of empty lines after a TITLE, 
+  -- if not overriden in the book/document config
+  defaultTitleLinesAfter = 2,
+  
+  -- Default pattern to use before and after a TITLE,
+  -- if not overriden in the book/document config
+  -- Examples: "{w-{x" "{W-{Y={x"
+  defaultTitlePattern = "-",
+  
+  -- By default page numbers are added to pages. 
+  -- Set to false to turn this off unless overridden in book/document config
+  addPageNumbers = true,
+  
+  -- String to use to the left of page numbers, if not
+  -- overridden in the book/document config
+  -- Examples: "{W({x" "-="
+  pageNumbersLeft = "- ",
+  
+  -- String to use to the right of page numbers, if not
+  -- overriden in the book/document config
+  -- Examples: "{W){x" "=-"
+  pageNumbersRight = " -",
+  
+  -- The default configuration when using BANNER format helper
+  -- unless overriden in the book/document config
+  defaultBanner = {
+    "{W  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  {x",
+    "{W / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ {x",
+    "{W`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`{x"
+  }
+}</script>
+			<eventHandlerList />
+		</Script>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>Templates</name>
+			<packageName></packageName>
+			<script></script>
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>Book - Default Template</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+-- When copying the template, change the alias below from "defaulttemplate"
+dsl.quillforge.books["defaulttemplate"] = {  
+  -- These are the item names from lore/identify that will be
+  -- used when the commands interact with the book
+  -- Example: "leather journal"
+  names = "",
+  
+  -- The title of the book, as seen in the inventory.
+  -- This can contain color codes as well.
+  -- Example: "a leather journal"
+  title = "",
+      
+  -- Optional: A string that will go to the left or right of the TITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  titleLeft = nil,
+  titleRight = nil, 
+  
+  -- Optional: A pattern that will repeat to the left and right of the TITLE,
+  -- filling up the available space.
+  -- Default from config will be used
+  -- Example: "{W-{Y={x"
+  titlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the TITLE, 
+  -- Example: "    "
+  titleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the TITLE
+  -- Default from config will be used
+  titleLinesBefore = nil,
+  titleLinesAfter = nil,
+  
+  -- Optional: A string that will go to the left or right of the SUBTITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  subtitleLeft = nil,
+  subtitleRight = nil,
+  
+  -- Optional: A pattern that will repeat to the left and right of the SUBTITLE,
+  -- filling up the available space.
+  -- Example: "{W-{Y={x"
+  subtitlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the SUBTITLE, 
+  -- Example: "    "
+  subtitleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the SUBTITLE
+  subtitleLinesBefore = nil,
+  subtitleLinesAfter = nil,
+  
+  -- Optional: A list of lines to be used for the BANNER
+  -- Default from config will be used
+  -- Example: {
+  --  "{W  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  {x",
+  --  "{W / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ {x",
+  --  "{W`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`{x"
+  --}
+  banner = nil,
+  
+  -- Optional: Whether or not to add page numbers.
+  -- Defaults to true in config
+  addPageNumbers = nil,
+  
+  -- Optional: A string to use to the left of page numbers
+  -- Default from config will be used
+  -- Example: "{W({x"
+  pageNumbersLeft = nil,
+  
+  -- Optional: A string to use to the right of page numbers
+  -- Default from config will be used
+  -- Example: "{W){x"
+  pageNumbersRight = nil,
+  
+  -- Optional: Setting this to true will skip searching for this book
+  -- when using the quill search books &lt;container&gt; command
+  skipSearchingContainer = true,
+  
+  -- Optional: Page width to enforce for the book and used when wrapping
+  -- PARAGRAPH.
+  -- Default from config will be used
+  pageWidth = nil,
+  
+  -- Optional: Set the desired number of pages.
+  -- This can be used when there are plans to expand a book so a larger
+  -- book is used by default even if the current number of pages
+  -- match a smaller book size.
+  desiredNumberOfPages = nil,
+  
+  -- Used for templates.
+  -- Remove this setting after copying template.
+  isTemplate = true,
+  
+  -- The book's pages. Each page in this lua table is a list of strings
+  -- representing each line or lines of the book.
+  pages = {
+    {
+      " ",
+    },
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Document - Default Template</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+
+-- When copying the template, change the alias below from "defaulttemplate"
+dsl.quillforge.docs["defaulttemplate"] = {  
+  -- These are the item names from lore/identify that will be
+  -- used when the commands interact with the document
+  -- Example: "worn parchment"
+  names = "",
+  
+  -- The title of the document, as seen in the inventory.
+  -- This can contain color codes as well.
+  -- Example: "a worn parchment"
+  title = "",
+      
+  -- Optional: A string that will go to the left or right of the TITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  titleLeft = nil,
+  titleRight = nil, 
+  
+  -- Optional: A pattern that will repeat to the left and right of the TITLE,
+  -- filling up the available space.
+  -- Default from config will be used
+  -- Example: "{W-{Y={x"
+  titlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the TITLE, 
+  -- Example: "    "
+  titleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the TITLE
+  -- Default from config will be used
+  titleLinesBefore = nil,
+  titleLinesAfter = nil,
+  
+  -- Optional: A string that will go to the left or right of the SUBTITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  subtitleLeft = nil,
+  subtitleRight = nil,
+  
+  -- Optional: A pattern that will repeat to the left and right of the SUBTITLE,
+  -- filling up the available space.
+  -- Example: "{W-{Y={x"
+  subtitlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the SUBTITLE, 
+  -- Example: "    "
+  subtitleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the SUBTITLE
+  subtitleLinesBefore = nil,
+  subtitleLinesAfter = nil,
+  
+  -- Optional: A list of lines to be used for the BANNER
+  -- Default from config will be used
+  -- Example: {
+  --  "{W  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  {x",
+  --  "{W / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ {x",
+  --  "{W`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`{x"
+  --}
+  banner = nil,
+  
+  -- Optional: Setting this to true will skip searching for this document
+  -- when using the quill search docs &lt;container&gt; command
+  skipSearchingContainer = false,
+  
+  -- Optional: Page width to enforce for the document and used when wrapping
+  -- PARAGRAPH.
+  -- Default from config will be used
+  pageWidth = nil,
+  
+  -- Used for templates.
+  -- Remove this setting after copying template.
+  isTemplate = true,
+  
+  -- The documents's lines as a lua table that is a list of strings
+  -- representing each line in the document.
+  lines = {
+    " ",
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Book - Simple Template</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+-- When copying the template, change the alias below from "simpletemplate"
+-- and update the names and title. Remove the isTemplate setting.
+dsl.quillforge.books["simpletemplate"] = {
+  names = "leather journal",
+  title = "a leather journal",
+  isTemplate = true,
+  pages = {
+    {
+      " ",
+    },
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Document - Simple Template</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+
+-- When copying the template, change the alias below from "simpletemplate"
+-- and update the names and title. Remove the isTemplate setting.
+dsl.quillforge.docs["simpletemplate"] = {  
+  names = "worn parchment",
+  title = "a worn parchment",
+  isTemplate = true,
+  lines = {
+    " ",
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Book - Simple Demo</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+-- When copying the template, change the alias below from "simpledemo"
+-- and update the names and title. Remove the isTemplate setting.
+dsl.quillforge.books["simpledemo"] = {
+  names = "poems book",
+  title = "a book of poems",
+  isTemplate = true,
+  pages = {
+    {
+      "TITLENOCONTENTS {WA Book of Poems{x",
+      "CONTENTS",
+      " ",
+      "DATE",
+    },
+    {
+      "TITLE {WPoem I{x",
+      "The quill awakes,",
+      "its tip a spark of light.",
+      "Ink flows like rivers,",
+      "forging dreams into night.",
+    },
+    {
+      "TITLE {WPoem II{x",
+      "Hammer falls on silence,",
+      "anvils glow with lore.",
+      "Letters shape to power,",
+      "and magic opens the door.",
+    },
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Document - Simple Demo</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+
+-- When copying the template, change the alias below from "simpletemplate"
+-- and update the names and title. Remove the isTemplate setting.
+dsl.quillforge.docs["simpledemo"] = {  
+  names = "simple poem",
+  title = "a simple poem",
+  isTemplate = true,
+  lines = {
+    "A page is but a window,",
+    "a veil of woven thread.",
+    "Open it with wonder,",
+    "and hear what must be said.",
+  }
+}</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>Scripts</name>
+			<packageName></packageName>
+			<script></script>
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>Aliases</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.aliases = dsl.quillforge.aliases or {}
+
+for alias, aliasId in pairs(dsl.quillforge.aliases) do 
+  killAlias(aliasId) 
+end
+dsl.quillforge.aliases = {}
+
+local function createAlias(alias, func)
+  dsl.quillforge.aliases[alias] = tempAlias("^" ..alias .."$", func) 
+end
+
+local function parseNumber(number)
+  local numberParsed = nil
+  if number then
+    numberParsed = tonumber(number)
+  end
+  
+  return numberParsed
+end
+
+createAlias("quill create book ([a-zA-Z0-9-_]+)", function()
+  dsl.quillforge.templates.createBook(matches[2])
+end)
+
+createAlias("quill create doc ([a-zA-Z0-9-_]+)", function()
+  dsl.quillforge.templates.createDoc(matches[2])	
+end)
+
+createAlias("quill", function()
+  dsl.quillforge.helpdisplay.displayQuillHelp()
+end)
+
+createAlias("quillforge", function()
+  dsl.quillforge.helpdisplay.displayQuillHelp()
+end)
+
+createAlias("quill tutorial", function()
+  dsl.quillforge.helpdisplay.displayQuillTutorial()
+end)
+
+createAlias("quill commands", function()
+  dsl.quillforge.helpdisplay.displayCommands()
+end)
+
+createAlias("quill helpers", function()
+  dsl.quillforge.helpdisplay.displayHelpers()
+end)
+
+createAlias("quill write book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+  
+  dsl.quillforge.writer.writeBook(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill write doc ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+  
+  dsl.quillforge.writer.writeDoc(doc, parseNumber(matches[3]))
+end)
+
+createAlias("quill rewrite book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+
+  dsl.quillforge.writer.rewriteBook(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill rewrite doc ([a-zA-Z0-9-_]+)", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+
+  dsl.quillforge.writer.rewriteDoc(doc)
+end)
+
+createAlias("quill test write book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+
+  dsl.quillforge.writer.testBook(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill test rewrite book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+
+  dsl.quillforge.writer.testRewriteBook(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill test write doc ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+
+  dsl.quillforge.writer.testDoc(doc, parseNumber(matches[3]))
+end)
+
+createAlias("quill test rewrite doc ([a-zA-Z0-9-_]+)", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+
+  dsl.quillforge.writer.testRewriteDoc(doc)
+end)
+
+createAlias("quill view book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+
+  dsl.quillforge.writer.view(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill view doc ([a-zA-Z0-9-_]+)", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+
+  dsl.quillforge.writer.view(doc)
+end)
+
+createAlias("quill read book ([a-zA-Z0-9-_]+)\\s?([0-9]+)?", function()
+  local book = dsl.quillforge.helpers.getBook(matches[2])
+  if book == nil then return end
+  
+  dsl.quillforge.reader.readBook(book, parseNumber(matches[3]))
+end)
+
+createAlias("quill read doc ([a-zA-Z0-9-_]+)", function()
+  local doc = dsl.quillforge.helpers.getDoc(matches[2])
+  if doc == nil then return end
+  
+  dsl.quillforge.reader.readDoc(doc)
+end)
+
+createAlias("quill list books", function()
+  dsl.quillforge.lister.displayAvailableBooks()
+end)
+
+createAlias("quill list docs", function()
+  dsl.quillforge.lister.displayAvailableDocuments()
+end)
+
+createAlias("quill search books (.*)", function()
+  dsl.quillforge.searcher.searchBooks(matches[2])
+end)
+
+createAlias("quill search docs (.*)", function()
+  dsl.quillforge.searcher.searchDocs(matches[2])
+end)
+
+createAlias("quill stop", function()
+  raiseEvent("dsl.quillforge.stop")
+end)</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Templates</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.templates = dsl.quillforge.templates or {}
+
+local function createTemplateScript(scriptName, scriptContents)
+  if exists(scriptName, "script") == 0 then
+		local scriptID = permScript(scriptName, "", scriptContents)
+
+		if scriptID then
+			dsl.quillforge.helpers.echoMessage("Script '" .. scriptName .. "' created successfully!")
+			enableScript(scriptName)
+		else
+			dsl.quillforge.helpers.echoError("Failed to create script '" .. scriptName .. "'")
+		end
+	else
+		dsl.quillforge.helpers.echoError("Script \"" .. scriptName .."\" already exists")
+	end
+end
+
+function dsl.quillforge.templates.createBook(alias)
+  createTemplateScript("Book - " ..alias, [[
+dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+dsl.quillforge.books["]] .. alias .. [["] = {  
+  -- These are the item names from lore/identify that will be
+  -- used when the commands interact with the book
+  names = "",
+  
+  -- The title of the book, as seen in the inventory.
+  -- This can contain color codes as well.
+  title = "",
+      
+  -- Optional: A string that will go to the left or right of the TITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  titleLeft = nil,
+  titleRight = nil, 
+  
+  -- Optional: A pattern that will repeat to the left and right of the TITLE,
+  -- filling up the available space.
+  -- Default from config will be used
+  -- Example: "{W-{Y={x"
+  titlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the TITLE, 
+  -- Example: "    "
+  titleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the TITLE
+  -- Default from config will be used
+  titleLinesBefore = nil,
+  titleLinesAfter = nil,
+  
+  -- Optional: A string that will go to the left or right of the SUBTITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  subtitleLeft = nil,
+  subtitleRight = nil,
+  
+  -- Optional: A pattern that will repeat to the left and right of the SUBTITLE,
+  -- filling up the available space.
+  -- Example: "{W-{Y={x"
+  subtitlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the SUBTITLE, 
+  -- Example: "    "
+  subtitleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the SUBTITLE
+  subtitleLinesBefore = nil,
+  subtitleLinesAfter = nil,
+  
+  -- Optional: A list of lines to be used for the BANNER
+  -- Default from config will be used
+  -- Example: {
+  --  "{W  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  {x",
+  --  "{W / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ {x",
+  --  "{W`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`{x"
+  --}
+  banner = nil,
+  
+  -- Optional: Whether or not to add page numbers.
+  -- Defaults to true in config
+  addPageNumbers = nil,
+  
+  -- Optional: A string to use to the left of page numbers
+  -- Default from config will be used
+  -- Example: "{W({x"
+  pageNumbersLeft = nil,
+  
+  -- Optional: A string to use to the right of page numbers
+  -- Default from config will be used
+  -- Example: "{W){x"
+  pageNumbersRight = nil,
+  
+  -- Optional: Setting this to true will skip searching for this book
+  -- when using the quill search books &lt;container&gt; command
+  skipSearchingContainer = false,
+  
+  -- Optional: Page width to enforce for the book and used when wrapping
+  -- PARAGRAPH.
+  -- Default from config will be used
+  pageWidth = nil,
+  
+  -- Optional: Set the desired number of pages.
+  -- This can be used when there are plans to expand a book so a larger
+  -- book is used by default even if the current number of pages
+  -- match a smaller book size.
+  desiredNumberOfPages = nil,
+  
+  -- The book's pages. Each page in this lua table is a list of strings
+  -- representing each line or lines of the book.
+  pages = {
+    {
+      " ",
+    },
+  }
+}
+  ]])
+end
+
+function dsl.quillforge.templates.createDoc(alias)
+  createTemplateScript("Document - " ..alias, [[
+dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+
+dsl.quillforge.docs["]] .. alias .. [["] = {  
+  -- These are the item names from lore/identify that will be
+  -- used when the commands interact with the document
+  names = "",
+  
+  -- The title of the document, as seen in the inventory.
+  -- This can contain color codes as well.
+  title = "",
+      
+  -- Optional: A string that will go to the left or right of the TITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  titleLeft = nil,
+  titleRight = nil, 
+  
+  -- Optional: A pattern that will repeat to the left and right of the TITLE,
+  -- filling up the available space.
+  -- Default from config will be used
+  -- Example: "{W-{Y={x"
+  titlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the TITLE, 
+  -- Example: "    "
+  titleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the TITLE
+  -- Default from config will be used
+  titleLinesBefore = nil,
+  titleLinesAfter = nil,
+  
+  -- Optional: A string that will go to the left or right of the SUBTITLE
+  -- Example: "{W&lt;&gt; {R&lt;&gt; {D&lt;&gt;{x"
+  subtitleLeft = nil,
+  subtitleRight = nil,
+  
+  -- Optional: A pattern that will repeat to the left and right of the SUBTITLE,
+  -- filling up the available space.
+  -- Example: "{W-{Y={x"
+  subtitlePattern = nil,
+  
+  -- Optional: Spacing to add to the right and left of the SUBTITLE, 
+  -- Example: "    "
+  subtitleSpacing = nil,
+  
+  -- Optional: The number of empty lines to put before or after the SUBTITLE
+  subtitleLinesBefore = nil,
+  subtitleLinesAfter = nil,
+  
+  -- Optional: A list of lines to be used for the BANNER
+  -- Default from config will be used
+  -- Example: {
+  --  "{W  .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.  {x",
+  --  "{W / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ / / \\ \\ {x",
+  --  "{W`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`{x"
+  --}
+  banner = nil,
+  
+  -- Optional: Setting this to true will skip searching for this document
+  -- when using the quill search docs &lt;container&gt; command
+  skipSearchingContainer = false,
+  
+  -- Optional: Page width to enforce for the document and used when wrapping
+  -- PARAGRAPH.
+  -- Default from config will be used
+  pageWidth = nil,
+  
+  -- The documents's lines as a lua table that is a list of strings
+  -- representing each line in the document.
+  lines = {
+    " ",
+  }
+}
+  ]])
+end
+
+function dsl.quillforge.templates.createDemoDoc()
+  createTemplateScript("Document - " ..alias, [[
+dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+dsl.quillforge.books["demobook"] = {  
+  names = "demo book",
+  title = "a demo book",
+  titleLeft = "{W-{Y={W-{x {W-{Y={W-{x {W-{Y={W-{x {W-{Y={W-{x",
+  titleRight = "{W-{Y={W-{x {W-{Y={W-{x {W-{Y={W-{x {W-{Y={W-{x", 
+  titleSpacing = nil,
+  titleLinesBefore = 0,
+  titleLinesAfter = 1,
+  subtitlePattern = "{C-{c={C-{x",
+  subtitleSpacing = "      ",
+  subtitleLinesBefore = nil,
+  subtitleLinesAfter = nil,
+  banner = {
+    "{W============================================================================{x",
+    "{Y----------------------------------------------------------------------------{x",
+    "{W============================================================================{x",
+  },
+  pageNumbersLeft = "{W-( {C",
+  pageNumbersRight = "{W )-{x",
+  skipSearchingContainer = true,
+  pages = {
+    {
+      "Below is an example of using the {GBANNER{x format helper.",
+      " ",
+      "BANNER",
+      " ",
+      "{C                      _   _{x",
+      "{C                  o  | | | |            o{x",
+      "{C                     | | | |         ,      __   _  _{x",
+      "{C                  |  |/  |/  |   |  / \\_|  /  \\_/ |/ |{x",
+      "{C                  |_/|__/|__/ \\_/|_/ \\/ |_/\\__/   |  |_/{x",
+      " ",
+      " ",
+      "{W                         A Mage's Basic Spellbook{x",
+      " ",
+      "BANNER",
+      " ",
+      "The {GCONTENTS{x format helper below will output a title of",
+      "contents for each page in the book, using the {GTITLE{x",
+      "or {GCONTENTSTITLE{x of each page.",
+      " ",
+      "CONTENTS",
+      " ",
+      "Seen below is the {GDATE{x format helper which will output",
+      "the date when the book was written",
+      " ",
+      "DATE"
+    },
+    {
+      "TITLE {WThe {YFirst {WPage{G TITLE{x",
+      "PARAGRAPH This uses the {GPARAGRAPH{x format helper which will automatically wrap this line at the desired pageLength and will add an extra empty line following the paragraph.",
+      "SUBTITLE {WThis is a {GSUBTITLE{W with spacing and pattern{x",
+      "This is a line of text not using any format helpers",      
+    },
+    {
+      "TITLE {WThe {CSecond {WPage{G TITLE{x",
+      "The following {GMANA{x helper can be used when creating spellbooks",
+      " ",
+      "MANA 50",
+      "PARAGRAPH Incantation: Recite the words ''",
+    },
+  }
+}
+  ]])
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>HelpDisplay</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.helpdisplay = dsl.quillforge.helpdisplay or {}
+
+local function wrapWords(text, maxWidth)
+  text = tostring(text or "")
+  maxWidth = math.max(10, tonumber(maxWidth) or 100)
+
+  local lines, line = {}, ""
+  for word in text:gmatch("%S+") do
+    if line == "" then
+      line = word
+    elseif (#line + 1 + #word) &lt;= maxWidth then
+      line = line .. " " .. word
+    else
+      table.insert(lines, line)
+      line = word
+    end
+  end
+  if line ~= "" then table.insert(lines, line) end
+  return lines
+end
+
+local function printField(label, value, width, baseIndent, labelWidth)
+  value = value or ""
+  baseIndent = baseIndent or 4
+  labelWidth = labelWidth or #"Description:"
+  local baseSpaces = string.rep(" ", baseIndent)
+  local labelText  = label .. ":"
+  local pad        = math.max(0, labelWidth - #labelText)
+  local firstPref  = baseSpaces .. "&lt;yellow&gt;" .. labelText .. "&lt;reset&gt;" .. string.rep(" ", pad + 1)
+
+  local avail = math.max(10, (width or 100) - (baseIndent + labelWidth + 1))
+  local wrapped = wrapWords(value, avail)
+
+  if #wrapped == 0 then
+    cecho(firstPref .. "\n")
+    return
+  end
+
+  cecho(firstPref .. wrapped[1] .. "\n")
+
+  local contPref = string.rep(" ", baseIndent + labelWidth + 1)
+  for i = 2, #wrapped do
+    cecho(contPref .. wrapped[i] .. "\n")
+  end
+end
+
+local function showCommandHelp(command, description, usage, notes, opts)
+  opts = opts or {}
+  local width      = type(opts) == "number" and opts or (opts.width or 70)
+  local baseIndent = opts.baseIndent or 4
+  local labelWidth = opts.labelWidth or #"Description:"
+
+  cecho("\n&lt;cyan&gt;" .. (command or "") .. "&lt;reset&gt;\n")
+  printField("Description", description or "", width, baseIndent, labelWidth)
+  printField("Usage",       usage or "",       width, baseIndent, labelWidth)
+  if notes and notes ~= "" then
+    printField("Notes",     notes,             width, baseIndent, labelWidth)
+  end
+end
+
+function dsl.quillforge.helpdisplay.displayQuillHelp()
+  cecho("\n 📖 &lt;b&gt;&lt;u&gt;&lt;cyan&gt;DSL QuillForge v" ..dsl.quillforge.helpers.getVersion() .."&lt;/u&gt; 📖 \n\n")
+  echo("Welcome to the DSL QuillForge. The QuillForge can be used\n")
+  echo("to easily write and manage books and documents. Default configuration\n")
+  echo("can be found in \"DSL-QuillForge/QuillForge Config\" script.\n")
+  echo("Review or update the config and use the following commands to get started.\n")
+  showCommandHelp(
+    "quill tutorial",
+    "This will provide you a list of steps to take to begin using QuillForge.",
+    "quill tutorial"
+  )
+  showCommandHelp(
+    "quill commands",
+    "This will list the available commands to use with the QuillForge.",
+    "quill commands"
+  )
+  showCommandHelp(
+    "quill helpers",
+    "This will list the available formatting helpers that can be used when creating the lines of book pages and documents.",
+    "quill helpers"
+  )
+  echo("\n\n")
+end
+
+function dsl.quillforge.helpdisplay.displayQuillTutorial()
+  cecho("\n 📖 &lt;b&gt;&lt;u&gt;&lt;cyan&gt;DSL QuillForge Tutorial&lt;/u&gt; 📖 \n\n")
+  echo("Welcome to the DSL QuillForge tutorial.\n")
+  echo("Follow the steps below to get started.\n\n")
+  cecho("1.) View the simple demo document. This will output the document\n")
+  echo("    without actually writing it. Run the following command:\n")
+  cecho("    &lt;cyan&gt;quill view doc simpledemo&lt;reset&gt;\n")
+  echo("\n")
+  cecho("2.) Now we will test the commands that would run if we were to write\n")
+  echo("    this document without actually running them. This will echo the\n")
+  echo("    the commands to the screen using the current configuration found\n")
+  echo("    in \"DSL-QuillForge/QuillForge Config.\" Run the following command:\n")
+  cecho("    &lt;cyan&gt;quill test write doc simpledemo&lt;reset&gt;\n")
+  echo("\n")
+  cecho("3.) Now we will do the same steps, but with a book instead of a document.\n")
+  echo("    Run the following commands:\n")
+  cecho("    &lt;cyan&gt;quill view book simpledemo&lt;reset&gt;\n")
+  cecho("    &lt;cyan&gt;quill test write book simpledemo&lt;reset&gt;\n")
+  echo("\n")
+  cecho("4.) Look at the config in Mudlet -&gt; Scripts -&gt; \"DSL-QuillForge/QuillForge Config\"\n")
+  echo("    and update any settings as needed, changing the container to your desired\n")
+  echo("    container and updating the quill, books, parchment, and inks to your desired\n")
+  echo("    items.\n")
+  echo("\n")
+  cecho("5.) Under Mudlet -&gt; Scripts -&gt; \"DSL-QuillForge/Templates\" right click\n")
+  echo("    and copy the \"Book - Simple Template\" script and then paste it somewhere\n")
+  echo("    else in your Mudlet scripts. Change the alias from \"simpletemplate\" to an\n")
+  echo("    alias of your choosing, and then update the names and title.\n")
+  echo("    Remove the isTemplate setting by deleting the line.\n")
+  echo("    Save the script.\n")
+  echo("\n")
+  cecho("6.) Test the commands that will run when writing by running the following command,")
+  echo("    replacing &lt;alias&gt; with the alias you used.\n")
+  cecho("    &lt;cyan&gt;quill test write book &lt;alias&gt;&lt;reset&gt;\n")
+  echo("\n")
+  cecho("7.) With your quill, ink, and a small book in your configured container, run\n")
+  echo("    the following command to write your book using the alias you set:\n")
+  cecho("    &lt;cyan&gt;quill write book &lt;alias&gt;&lt;reset&gt;\n")
+  echo("\n")
+  cecho("8.) Continue to use the DSL QuillForge by looking through the other templates\n")
+  echo("    for examples, and running the following commands to read more:\n")
+  cecho("    &lt;cyan&gt;quill commands&lt;reset&gt;\n")
+  cecho("    &lt;cyan&gt;quill helpers&lt;reset&gt;\n")
+  echo("\n")
+end
+
+function dsl.quillforge.helpdisplay.displayCommands()
+  cecho("\n 📖 &lt;b&gt;&lt;u&gt;&lt;cyan&gt;DSL QuillForge Commands&lt;/u&gt; 📖 \n\n")
+  
+  cecho("&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Creating new books and documents&lt;/u&gt;\n")
+  
+  echo("\nTo create new books or documents, create a new script following\n")
+  echo("the examples found in \"DSL-QuillForge/Templates/\" or copy one of\n")
+  echo("the example book or document scripts. You can  go to Mudlet -&gt; Scripts\n")
+  echo("and then use \"Add Script\" to create a new script, and then copy/paste\n")
+  echo("one of the example templates, then update your alias and other settings\n")
+  echo("as needed, or copy and move an existing script. Your book scripts can be\n")
+  echo("placed anywhere in your Mudlet scripts directories. Be sure\n")
+  echo("to backup any book scripts somewhere safe so they do not get\n")
+  echo("accidently lost or deleted. One way this can be done is by\n")
+  echo("exporting a top level script group in Mudlet as a Mudlet module\n")
+  echo("and keeping it installed and synced to a secure location such\n")
+  echo("as dropbox or a git repository.\n\n")
+  echo("Alternatively, you can use one of the following commands which will\n")
+  echo("create a script for you, but have been known to cause issues in\n")
+  echo("Mudlet with scripts failing to update/save/delete initially until\n")
+  echo("Mudlet is restarted once. Recommended to restart before updating\n")
+  echo("the scripts after creating if using these commands.\n")
+  
+  showCommandHelp(
+    "quill create book &lt;alias&gt;",
+    "This will create a new script titled \"Book - &lt;alias&gt;\" that can be updated or moved as needed. The script will contain the configuration for a new book with one page and a single line. Book scripts can also be created manually or copy/pasted from existing books.",
+    "quill create book journal"
+  )
+  showCommandHelp(
+    "quill create doc &lt;alias&gt;",
+    "This will create a new script titled \"Document - &lt;alias&gt;\" that can be updated or moved as needed. The script will contain the configuration for a new document with a single line. Document scripts can also be created manually or copy/pasted from existing documents.",
+    "quill create doc letter"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Writing books\n")
+  showCommandHelp(
+    "quill write book &lt;alias&gt;",
+    "This will grab your quill, ink, and the appropriate sized book from your container and begin writing the book with the provided alias. Once done, it will drop and sacrifice the ink.",
+    "quill write book simpledemo"
+  )
+  showCommandHelp(
+    "quill write book &lt;alias&gt; &lt;number-of-copies&gt;",
+    "This will grab your quill, ink, and the appropriate sized book from your container and begin writing the book with the provided alias for the number of copies provided. Once done, it will drop and sacrifice the ink.",
+    "quill write book simpledemo 2"
+  )
+  showCommandHelp(
+    "quill rewrite book &lt;alias&gt;",
+    "This will grab your quill and ink from your container and then use the existing book within your inventory to begin rewriting the entire book. Once done, it will drop and sacrifice the ink.",
+    "quill rewrite book simpledemo"
+  )
+  showCommandHelp(
+    "quill rewrite book &lt;alias&gt; &lt;pagenumber&gt;",
+    "This will grab your quill from your container and then use the existing book and ink within your inventory to begin rewriting the provided page of the book. Ink is not sacrificed so it can be continued to be reused while rewriting portions of the book.",
+    "quill rewrite book simpledemo 1"
+  )
+  showCommandHelp(
+    "quill test write book &lt;alias&gt;",
+    "This is used to test or dry run the commands that will be sent to write a book for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test write book simpledemo"
+  )
+  showCommandHelp(
+    "quill test write book &lt;alias&gt; &lt;number-of-copies&gt;",
+    "This is used to test or dry run the commands that will be sent to write copies of a book for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test write book simpledemo 2"
+  )
+  showCommandHelp(
+    "quill test rewrite book &lt;alias&gt;",
+    "This is used to test or dry run the commands that will be sent to rewrite a book for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test rewrite book simpledemo"
+  )
+  showCommandHelp(
+    "quill test rewrite book &lt;alias&gt; &lt;pagenumber&gt;",
+    "This is used to test or dry run the commands that will be sent to rewrite a specific page of a book for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test rewrite book simpledemo 1"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Writing Documents\n")
+  showCommandHelp(
+    "quill write doc &lt;alias&gt;",
+    "This will grab your quill, parchment, and ink from your container and will begin writing the document with the provided alias. The ink will be dropped and sacrificed.",
+    "quill write doc simpledemo"
+  )
+  showCommandHelp(
+    "quill write doc &lt;alias&gt; &lt;number-of-copies&gt;",
+    "This will grab your quill, parchment, and ink from your container and will begin writing the document with the provided alias for the number of copies provided. The ink will be dropped and sacrificed.",
+    "quill write doc simpledemo 2"
+  )
+  showCommandHelp(
+    "quill rewrite doc &lt;alias&gt;",
+    "This will grab your quill from your container and using the ink and existing document in your inventory will begin rewriting the document. Ink is not sacrificed so that you can continue to rewrite the document using the ink.",
+    "quill rewrite doc simpledemo"
+  )
+  showCommandHelp(
+    "quill test write doc &lt;alias&gt;",
+    "This is used to test or dry run the commands that will be sent to write a document for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test write doc simpledemo"
+  )
+  showCommandHelp(
+    "quill test write doc &lt;alias&gt; &lt;number-of-copies&gt;",
+    "This is used to test or dry run the commands that will be sent to write copies of a document for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test write doc simpledemo 2"
+  )
+  showCommandHelp(
+    "quill test rewrite doc &lt;alias&gt;",
+    "This is used to test or dry run the commands that will be sent to rewrite a document for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
+    "quill test rewrite doc simpledemo"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Stopping a book or document command that is in progress\n")
+  showCommandHelp(
+    "quill stop",
+    "This will stop any book or document command currently in progress, sending a ~ to cancel commands and stopping any scheduled timers.",
+    "quill stop"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Viewing list of current books or documents\n")
+  showCommandHelp(
+    "quill list books",
+    "This will show a full list of all the book aliases available along with the number of pages and required book size. It will also show the resources needed to write the entire set of books.",
+    "quill list books"
+  )
+  showCommandHelp(
+    "quill list docs",
+    "This will show a full list of all the document aliases available. It will also show the resources needed to write the entire set of documents.",
+    "quill list docs"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Reading or viewing books and documents\n")
+  showCommandHelp(
+    "quill read book &lt;alias&gt;",
+    "This will check your current scroll settings and then will begin to read through each page and section of the book in your inventory.",
+    "quill read book simpledemo"
+  )
+  showCommandHelp(
+    "quill read book &lt;alias&gt; &lt;pagenumber&gt;",
+    "This will check your current scroll settings and then will begin to read through the sections of the provided page of the book in your inventory.",
+    "quill read book simpledemo 1"
+  )
+  showCommandHelp(
+    "quill read doc &lt;alias&gt;",
+    "This will check your current scroll settings and then will begin to read through the sections of the provided document in your inventory.",
+    "quill read doc simpledemo"
+  )
+  showCommandHelp(
+    "quill view book &lt;alias&gt;",
+    "This will display the entire book to your console by echoing out every page of the book with included colors and showing the total number of characters on each page. This is useful while working on writing and designing the book, or to view its contents without requiring access to a copy of the book.",
+    "quill view book simpledemo"
+  )
+  showCommandHelp(
+    "quill view book &lt;alias&gt; &lt;pagenumber&gt;",
+    "This will display the provided page of the book to your console by echoing out the page with included colors and showing the total number of characters on the page. This is useful while working on writing and designing the book, or to view its contents without requiring access to a copy of the book.",
+    "quill view book simpledemo 1"
+  )
+  showCommandHelp(
+    "quill view doc &lt;alias&gt;",
+    "This will display the provided document to your console by echoing out the document with included colors and showing the total number of characters in the document. This is useful while working on writing and designing the document, or to view its contents without requiring access to a copy of the document.",
+    "quill view doc simpledemo"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Searching container for books\n")
+  showCommandHelp(
+    "quill search books &lt;container&gt;",
+    "This will search through the provided container such as a pit to find any copies of your registered books that are not configured to skip searching and will echo out the count of books found or show missing books in red. This is usefull when keeping a clan or kingdom pit stocked with copies of your books.",
+    "quill search books pit"
+  )
+  showCommandHelp(
+    "quill search docs &lt;container&gt;",
+    "This will search through the provided container such as a pit to find any copies of your registered documents that are not configured to skip searching and will echo out the count of documents found or show missing documents in red. This is usefull when keeping a clan or kingdom pit stocked with copies of your documents.",
+    "quill search docs pit"
+  )
+  echo("\n\n")
+end
+
+function dsl.quillforge.helpdisplay.displayHelpers()
+  cecho("\n 📖 &lt;b&gt;&lt;u&gt;&lt;cyan&gt;DSL QuillForge Format Helpers&lt;/u&gt; 📖 \n\n")
+  echo("The following formatting helpers are available to be used\n")
+  echo("when writing books and documents. These format helpers are\n")
+  echo("used at the beginning of a line in a book or document.\n")
+  showCommandHelp(
+    "CONTENTS",
+    "This will create a table of contents on the page, using the TITLE or CONTENTSTITLE format helpers on the subsequent pages of the book.",
+    "\"CONTENTS\""
+  )
+  showCommandHelp(
+    "TITLE",
+    "This will put a title on the page that is also used in the table of contents when using the CONTENT format helper. The TITLE will also include configured title patterns or strings before and after the title if they are available.",
+    "\"TITLE My First Page\""
+  )
+  showCommandHelp(
+    "TITLENOCONTENTS",
+    "This behaves like the TITLE format helper, but does NOT include the title/page in the page of contents when using the CONTENT format helper.",
+    "\"TITLENOCONTENTS My First Page\""
+  )
+  showCommandHelp(
+    "CONTENTSTITLE",
+    "This will set the title that is seen for the page in the table of contents when using CONTENTS format helper, but does NOT put any title on the page.",
+    "\"CONTENTSTITLE My First Page\""
+  )
+  showCommandHelp(
+    "SUBTITLE",
+    "This will put a subtitle on the page that is used for sections of the page. The SUBTITLE will also include configured subtitle patterns or strings before and after the title if they are available.",
+    "\"SUBTITLE Page Section\""
+  )
+  showCommandHelp(
+    "BANNER",
+    "This will be the configured banner lines onto the page. This is useful when you want to use the same banner across multiple pages or books.",
+    "\"BANNER\""
+  )
+  showCommandHelp(
+    "PARAGRAPH",
+    "This will allow for multiple lines that will automatically be wrapped to the desired page width. This will also include an empty line after the paragraph.",
+    "\"PARAGRAPH Long text to be wrapped here\""
+  )
+  showCommandHelp(
+    "PARAGRAPH0",
+    "Behaves like PARAGRAPH but does not add the extra empty line after the paragraph.",
+    "\"PARAGRAPH0 Long text to be wrapped here\""
+  )
+  showCommandHelp(
+    "PARAGRAPHINDENT",
+    "Behaves like PARAGRAPH but also indents the paragraph.",
+    "\"PARAGRAPHINDENT Long text to be wrapped here\""
+  )
+  showCommandHelp(
+    "PARAGRAPHINDENT0",
+    "Behaves like PARAGRAPH0 but also indents the paragraph.",
+    "\"PARAGRAPHINDENT0 Long text to be wrapped here\""
+  )
+  showCommandHelp(
+    "MANA",
+    "This is used for creating spellbooks. This will replace mana with an in-character friendly string: Energy Expended: Equivalent to fly.",
+    "\"MANA 50\""
+  )
+  showCommandHelp(
+    "DATE",
+    "This will place an in-character friendly date of when the book was written, useful for knowing if an old version of the book is outdated.",
+    "\"DATE\""
+  )
+  echo("\n\n")
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Helpers</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.helpers = dsl.quillforge.helpers or {}
+
+function dsl.quillforge.helpers.getVersion()
+  return dsl.quillforge.version.Major
+  .."." ..dsl.quillforge.version.Minor
+  .."." ..dsl.quillforge.version.Patch
+end
+
+function dsl.quillforge.helpers.echoMessage(msg)
+  cecho("\n&lt;white&gt;[&lt;cyan&gt;QuillForge&lt;white&gt;]&lt;green&gt; " ..msg .."&lt;reset&gt;\n")
+end
+
+function dsl.quillforge.helpers.echoError(msg)
+  cecho("\n&lt;white&gt;[&lt;cyan&gt;QuillForge&lt;white&gt;]&lt;red&gt; Error: " ..msg .."&lt;reset&gt;\n")
+end
+
+function dsl.quillforge.helpers.stringStarts(str, starts)
+  return string.sub(str, 1, string.len(starts)) == starts
+end
+
+function dsl.quillforge.helpers.stringReplace(str, find, replace)
+  return str:gsub(find, replace)
+end
+
+function dsl.quillforge.helpers.stringReplace(str, find, replace)
+  return str:gsub(find, replace)
+end
+
+function dsl.quillforge.helpers.getBook(alias)
+  local book = dsl.quillforge.books[alias]
+  
+  if book ~= nil then
+    return book
+  end
+  
+  dsl.quillforge.helpers.echoError("Invalid book")
+  return nil
+end
+
+function dsl.quillforge.helpers.getDoc(alias)
+  local doc = dsl.quillforge.docs[alias]
+  
+  if doc ~= nil then
+    return doc
+  end
+  
+  dsl.quillforge.helpers.echoError("Invalid document")
+  return nil
+end
+
+local function replaceColorCodes(line, remove)
+  local codes = {
+    {
+      find = "{r",
+      replace = "&lt;ansiRed&gt;",
+    },
+    {
+      find = "{y",
+      replace = "&lt;ansiYellow&gt;",
+    },
+    {
+      find = "{b",
+      replace = "&lt;ansiBlue&gt;",
+    },
+    {
+      find = "{c",
+      replace = "&lt;ansiCyan&gt;",
+    },
+    {
+      find = "{m",
+      replace = "&lt;ansiMagenta&gt;",
+    },
+    {
+      find = "{g",
+      replace = "&lt;ansiGreen&gt;",
+    },
+    {
+      find = "{D",
+      replace = "&lt;DimGrey&gt;",
+    },
+    {
+      find = "{o",
+      replace = "&lt;DarkOrange&gt;",
+    },
+    {
+      find = "{n",
+      replace = "&lt;SaddleBrown&gt;",
+    },
+    {
+      find = "{w",
+      replace = "&lt;grey&gt;",
+    },
+    {
+      find = "{R",
+      replace = "&lt;red&gt;",
+    },
+    {
+      find = "{Y",
+      replace = "&lt;yellow&gt;",
+    },
+    {
+      find = "{B",
+      replace = "&lt;blue&gt;",
+    },
+    {
+      find = "{C",
+      replace = "&lt;cyan&gt;",
+    },
+    {
+      find = "{M",
+      replace = "&lt;magenta&gt;",
+    },
+    {
+      find = "{G",
+      replace = "&lt;green&gt;",
+    },
+    {
+      find = "{W",
+      replace = "&lt;white&gt;",
+    },
+    {
+      find = "{p",
+      replace = "&lt;HotPink&gt;",
+    },
+    {
+      find = "{u",
+      replace = "&lt;SlateBlue&gt;",
+    },
+    {
+      find = "{x",
+      replace = "&lt;reset&gt;",
+    },
+    {
+      find = "{-",
+      replace = "",
+    },
+    {
+      find = "{_",
+      replace = "&lt;u&gt;",
+    }
+  }
+    
+  for _, code in pairs(codes) do
+    if remove then
+      line = dsl.quillforge.helpers.stringReplace(line, code.find, "")
+    else
+      line = dsl.quillforge.helpers.stringReplace(line, code.find, code.replace)
+    end
+  end
+  
+  return line
+end
+
+function dsl.quillforge.helpers.replaceColorCodes(line)
+  return replaceColorCodes(line, false)
+end
+
+function dsl.quillforge.helpers.clearColorCodes(line)
+  return replaceColorCodes(line, true)
+end
+
+function dsl.quillforge.helpers.getBookTypeNeeded(book)
+  local numberOfPages = #book.pages
+  
+  if book.desiredNumberOfPages ~= nil
+    and book.desiredNumberOfPages &gt; numberOfPages then
+    numberOfPages = book.desiredNumberOfPages
+  end
+  
+  local bookType = dsl.quillforge.config.thinBook
+  
+  if numberOfPages &gt; 15 then
+    bookType = dsl.quillforge.config.thickBook
+  elseif numberOfPages &gt; 5 then
+    bookType = dsl.quillforge.config.smallBook
+  end
+  
+  return bookType
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Reader</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.reader = dsl.quillforge.reader or {}
+dsl.quillforge.reader.state = dsl.quillforge.reader.state or {}
+dsl.quillforge.reader.triggers = dsl.quillforge.reader.triggers or {}
+
+local function killTriggers()
+  for _, triggerId in pairs(dsl.quillforge.reader.triggers) do 
+    killTrigger(triggerId) 
+  end
+  dsl.quillforge.reader.triggers = {}
+end
+
+local function readNextPage()
+  local page = dsl.quillforge.reader.state.pageOrder[dsl.quillforge.reader.state.currentPageIndex]
+  
+  if not page then
+    return
+  end
+  
+
+  local lines = dsl.quillforge.reader.state.pages[page]
+  send("read '" .. dsl.quillforge.reader.state.book.names .. "' page " .. page)
+
+  local hasPageNumbers = addPageNumbers
+  local pageNumberLines = 0
+
+  if dsl.quillforge.reader.state.book.addPageNumbers ~= nil then
+    hasPageNumbers = dsl.quillforge.reader.state.book.addPageNumbers
+  end
+
+  if hasPageNumbers then
+    pageNumberLines = 3
+  end
+
+  local numberOfSections = math.ceil((#lines + pageNumberLines) / (dsl.quillforge.reader.state.scrollSize - 2))
+
+  while numberOfSections &gt; 1 do
+    send("c", false)
+    numberOfSections = numberOfSections - 1
+  end
+
+  send("dip", false)
+end
+
+local function read(obj, readPageNumber)
+  killTriggers()
+  
+  table.insert(dsl.quillforge.reader.triggers, 
+    tempTrigger(
+      "You do not see that here.", 
+      function()
+        dsl.quillforge.helpers.echoError("Book or document not found")
+        send("~")
+        killTriggers()
+      end
+    )
+  )
+  
+  if dsl.quillforge.reader.state.scrollSize == nil then
+    table.insert(dsl.quillforge.reader.triggers,
+      tempRegexTrigger(
+        "You currently display ([0-9]+) lines per page.", 
+        function()
+          dsl.quillforge.reader.state.scrollSize = tonumber(matches[2])
+          deleteLine()
+          read(obj, readPageNumber)
+        end
+      )
+    )
+    send("scroll", false)
+  elseif obj.lines ~= nil then
+    local doc = obj
+    local lines = dsl.quillforge.parser.parseLines(doc.lines)
+    
+    table.insert(dsl.quillforge.reader.triggers, 
+      tempTrigger(
+        "Dip what in what?", 
+        function()
+          deleteLine()
+          killTriggers()
+          dsl.quillforge.helpers.echoMessage("Finished reading")
+        end
+      )
+    )
+    
+    send("read '" ..doc.names .. "'")
+    
+    local numberOfSections = math.ceil(#lines / (dsl.quillforge.reader.state.scrollSize - 2))
+    
+    while numberOfSections &gt; 1 do
+      send("c", false)
+      numberOfSections = numberOfSections - 1
+    end 
+    
+    send("dip", false)
+  else    
+    dsl.quillforge.reader.state.book = obj
+    dsl.quillforge.reader.state.pages = dsl.quillforge.parser.getIndexedAndParsedPages(dsl.quillforge.reader.state.book)
+    dsl.quillforge.reader.state.pageOrder = {}
+    
+    for page, _ in pairs(dsl.quillforge.reader.state.pages) do
+      if readPageNumber == nil or page == readPageNumber then
+        table.insert(dsl.quillforge.reader.state.pageOrder, page)
+      end
+    end
+    table.sort(dsl.quillforge.reader.state.pageOrder)
+    
+    dsl.quillforge.reader.state.currentPageIndex = 1
+    
+    table.insert(dsl.quillforge.reader.triggers, 
+      tempTrigger("Dip what in what?", function()
+        deleteLine()
+        dsl.quillforge.reader.state.currentPageIndex = dsl.quillforge.reader.state.currentPageIndex + 1
+    
+        if dsl.quillforge.reader.state.currentPageIndex &gt; #dsl.quillforge.reader.state.pageOrder then
+          killTriggers()
+          dsl.quillforge.helpers.echoMessage("Finished reading")
+        else
+          readNextPage()
+        end
+      end)
+    )
+    
+    dsl.quillforge.reader.state.currentPageIndex = 1
+    readNextPage()
+  end
+end
+
+function dsl.quillforge.reader.readDoc(doc)
+  read(doc)
+end
+
+function dsl.quillforge.reader.readBook(book, pageNumber)
+  read(book, pageNumber)
+end
+
+if dsl.quillforge.reader.stopHandler ~= nil then
+	killAnonymousEventHandler(dsl.quillforge.reader.stopHandler)
+end
+
+dsl.quillforge.reader.stopHandler = registerAnonymousEventHandler(
+  "dsl.quillforge.stop", killTriggers)</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Writer</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+dsl.quillforge.writer = dsl.quillforge.writer or {}
+dsl.quillforge.writer.state = dsl.quillforge.writer.state or {}
+dsl.quillforge.writer.triggers = dsl.quillforge.writer.triggers or {}
+
+local pageSize = 4097
+
+local function createTrigger(substring, func) 
+  table.insert(dsl.quillforge.writer.triggers, tempTrigger(substring, func)) 
+end
+
+local function createRegexTrigger(regex, func) 
+  table.insert(dsl.quillforge.writer.triggers, tempRegexTrigger(regex, func)) 
+end
+
+local function killTriggers()
+  for triggerIndex, triggerId in pairs(dsl.quillforge.writer.triggers) do 
+    killTrigger(triggerId) 
+  end
+  dsl.quillforge.writer.triggers = {}
+end
+
+local function createTriggers()
+  killTriggers()
+  
+  createTrigger("Write in what?", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Book or document is missing")
+  end)
+  
+  createTrigger("You need something to write with.", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Quill is missing")
+  end)
+  
+  createTrigger("In your dreams, or what?", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Currently sleeping")
+  end)
+  
+  createRegexTrigger("(.*) is out of ink.", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Quill is empty. Ink is missing.")
+  end)
+  
+  createRegexTrigger("I see no (.*) here.", function()
+    if matches[2] == dsl.quillforge.config.container then
+      dsl.quillforge.writer.stop()
+      dsl.quillforge.helpers.echoError("Container not found")
+    end
+  end)
+  
+  createTrigger("Invalid page number!", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Unexpected Error 'Invalid page number!'")
+  end)
+  
+  createTrigger("That page seems to have been torn out.", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Unexpected Error 'That page seems to have been torn out.'")
+  end)
+  
+  createTrigger("String too long, last line skipped.", function()
+    dsl.quillforge.writer.stop()
+    dsl.quillforge.helpers.echoError("Unexpected Error 'String too long, last line skipped.")
+  end)
+end
+
+dsl.quillforge.writer.stop = function()
+  killTriggers()
+  send("~")
+end
+
+if dsl.quillforge.writer.stopHandler ~= nil then
+	killAnonymousEventHandler(dsl.quillforge.writer.stopHandler)
+end
+
+dsl.quillforge.writer.stopHandler = registerAnonymousEventHandler(
+  "dsl.quillforge.stop", function() dsl.quillforge.writer.stop() end)
+
+local function sendLine(line, echoOnly)
+  if echoOnly then
+    echo("\n" ..line)
+  else
+    send(line)
+  end
+end
+
+local function writeNextPage()
+  local page = dsl.quillforge.writer.state.pageOrder[dsl.quillforge.writer.state.currentPageIndex]
+  
+  if not page then
+    return
+  end
+
+  local lines = dsl.quillforge.writer.state.parsedPages[page]
+  local echoOnly = dsl.quillforge.writer.state.echoOnly
+  local book = dsl.quillforge.writer.state.book
+  
+  if dsl.quillforge.writer.state.pageNumberOnly then
+    dsl.quillforge.helpers.echoMessage("Writing page " .. page)
+  else
+    dsl.quillforge.helpers.echoMessage("Writing page " .. page .. " of " .. #dsl.quillforge.writer.state.pageOrder)
+  end
+  
+  sendLine("dip '" .. dsl.quillforge.config.quill .. "' '" .. dsl.quillforge.config.inkType .. "'", echoOnly)
+  sendLine("write '" .. book.names .. "' page " .. page, echoOnly)
+  sendLine(".c", echoOnly)
+
+  local totalCharacters = 0
+  
+  for _, line in ipairs(lines) do
+    totalCharacters = totalCharacters + #line + 2 -- add newline size
+    sendLine(line, echoOnly)
+  end
+
+  sendLine("@", echoOnly)
+
+  dsl.quillforge.helpers.echoMessage("Total characters: " .. totalCharacters)
+  dsl.quillforge.writer.state.lastPageWritten = page
+  
+  send("dip", false)
+end
+
+local function write(book, rewrite, echoOnly, viewOnly, pageNumberOnly, numberOfCopies)
+  killTriggers()
+  local parsedPages = nil
+  local parsedLines = nil
+  local lineExceedsLength = false
+  local emptyLine = false
+  local pageNumberExceeded = false
+  local exceededLine = nil
+  local pageLengthExceeded = false
+  local pageLengthExceededPage = nil
+  local incorrectTitle = false
+  local maxTitleLength = 50
+  local bookPageWidth = dsl.quillforge.config.pageWidth
+  
+  if numberOfCopies ~= nil and numberOfCopies &lt;= 0 then
+    numberOfCopies = 1
+  end
+  
+  if book ~= nil and book.pageWidth ~= nil then
+    bookPageWidth = book.pageWidth
+  end
+  
+  if not book.title or string.len(dsl.quillforge.helpers.clearColorCodes(book.title)) &gt; maxTitleLength then
+    incorrectTitle = true
+  end
+  
+  if book.lines ~= nil then
+    parsedLines = dsl.quillforge.parser.parseLines(book.lines)
+    
+    local lineExceedsLength = false
+    local exceededLine = nil
+    local totalCharacters = 0
+    
+    for k, line in pairs(parsedLines) do
+      local echoLine = line
+      totalCharacters = totalCharacters + string.len(line)
+      totalCharacters = totalCharacters + 2
+      echoLine = dsl.quillforge.helpers.clearColorCodes(echoLine)
+      local viewOnlyLine = dsl.quillforge.helpers.replaceColorCodes(line)
+      
+      if viewOnly then
+        cecho("\n" ..viewOnlyLine)
+      end
+      
+      if string.len(echoLine) &gt; bookPageWidth then
+        lineExceedsLength = true
+        exceededLine = echoLine
+      elseif string.len(line) == 0 then
+        emptyLine = true
+      elseif totalCharacters &gt; pageSize then
+        pageLengthExceeded = true
+        pageLengthExceededPage = 1
+      end
+    end
+    
+    if viewOnly then
+      echo("\n")
+      dsl.quillforge.helpers.echoMessage("Total characters: " .. totalCharacters)
+    end
+  else
+    parsedPages = dsl.quillforge.parser.getIndexedAndParsedPages(book)
+    local numberOfPages = #book.pages
+    
+    if numberOfPages &gt; 40 then
+     pageNumberExceeded = true
+    end
+    
+    for page, lines in pairs(parsedPages) do
+      local totalCharacters = 0
+      
+      if pageNumberOnly == nil or page == pageNumberOnly then
+        for k, line in pairs(lines) do
+          local echoLine = line
+          totalCharacters = totalCharacters + string.len(line)
+          totalCharacters = totalCharacters + 2
+          echoLine = dsl.quillforge.helpers.clearColorCodes(echoLine)
+          local viewOnlyLine = dsl.quillforge.helpers.replaceColorCodes(line)
+          
+          if viewOnly then
+            cecho("\n" ..viewOnlyLine)
+          end
+            
+          if string.len(echoLine) &gt; bookPageWidth then
+            lineExceedsLength = true
+            exceededLine = echoLine
+          elseif string.len(echoLine) == 0 then
+            emptyLine = true
+          elseif totalCharacters &gt; pageSize then
+            pageLengthExceeded = true
+            pageLengthExceededPage = page
+          end
+        end
+        
+        if viewOnly then
+          echo("\n")
+          dsl.quillforge.helpers.echoMessage("Total characters: " .. totalCharacters)
+        end
+      end
+    end
+  end
+   
+  if lineExceedsLength then
+    dsl.quillforge.helpers.echoError("Line length of " ..tostring(bookPageWidth) .." exceeded. Please fix line length.")
+    dsl.quillforge.helpers.echoError(exceededLine)
+  elseif emptyLine then
+    dsl.quillforge.helpers.echoError("Empty lines will be ignored. Please remove empty lines.")
+  elseif pageNumberExceeded then
+    dsl.quillforge.helpers.echoError("Max number of pages 40 exceeded. Please reduce number of pages.")
+  elseif pageLengthExceeded then
+    dsl.quillforge.helpers.echoError("Page " ..pageLengthExceededPage .. " exceeded max characters of " ..pageSize .." including line breaks (2 per line) and color codes. Please reduce page size.")
+  elseif incorrectTitle then
+    dsl.quillforge.helpers.echoError("Title is required and must be " ..maxTitleLength .." characters or less")
+  elseif not viewOnly then
+    -- Begin writing
+    local bookType = dsl.quillforge.config.parchmentType
+    
+    if book.lines == nil then
+      bookType = dsl.quillforge.helpers.getBookTypeNeeded(book)
+    end
+    
+    createTriggers()
+    
+    if rewrite then
+      dsl.quillforge.helpers.echoMessage("Beginning to rewrite&lt;reset&gt; " ..dsl.quillforge.helpers.replaceColorCodes(book.title))
+    else
+      dsl.quillforge.helpers.echoMessage("Beginning to write&lt;reset&gt; " ..dsl.quillforge.helpers.replaceColorCodes(book.title))
+    end
+    
+    if not rewrite then
+      sendLine("get '" ..bookType .."' '" ..dsl.quillforge.config.container .."'", echoOnly)
+    end
+    
+    -- If writing a new full book or parchment, get new ink
+    if (pageNumberOnly == nil or book.lines ~= nil) and not rewrite then
+      sendLine("get '" ..dsl.quillforge.config.inkType .."' '" ..dsl.quillforge.config.container .."'", echoOnly)
+    end
+    
+    sendLine("get '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.container .."'", echoOnly)
+    
+    if not rewrite then
+      sendLine("dip '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.inkType .."'", echoOnly)
+      sendLine("write '" ..bookType .."' title " ..book.title, echoOnly)
+    end
+    
+    local pageWaitTime = 4
+    
+    if parsedLines == nil then
+      -- Write book
+      
+      dsl.quillforge.writer.state.pageOrder = {}
+      
+      for page, _ in pairs(parsedPages) do
+        if pageNumberOnly == nil or page == pageNumberOnly then
+          table.insert(dsl.quillforge.writer.state.pageOrder, page)
+        end
+      end
+      
+      table.sort(dsl.quillforge.writer.state.pageOrder)
+      
+      dsl.quillforge.writer.state.currentPageIndex = 1
+      dsl.quillforge.writer.state.book = book
+      dsl.quillforge.writer.state.echoOnly = echoOnly
+      dsl.quillforge.writer.state.pageNumberOnly = pageNumberOnly
+      dsl.quillforge.writer.state.parsedPages = parsedPages
+      dsl.quillforge.writer.state.rewrite = rewrite
+      dsl.quillforge.writer.state.numberOfCopies = numberOfCopies
+      dsl.quillforge.writer.state.viewOnly = viewOnly
+      
+      createTrigger(
+        "Dip what in what?", 
+        function()
+          deleteLine()
+          dsl.quillforge.writer.state.currentPageIndex = dsl.quillforge.writer.state.currentPageIndex + 1
+      
+          if dsl.quillforge.writer.state.pageNumberOnly then
+            dsl.quillforge.helpers.echoMessage("Finished writing page " .. dsl.quillforge.writer.state.pageNumberOnly)
+          else
+            dsl.quillforge.helpers.echoMessage("Finished writing page " .. dsl.quillforge.writer.state.lastPageWritten .. " of " .. #dsl.quillforge.writer.state.pageOrder)
+          end
+            
+          if dsl.quillforge.writer.state.currentPageIndex &gt; #dsl.quillforge.writer.state.pageOrder then
+            if dsl.quillforge.writer.state.pageNumberOnly == nil then
+              sendLine("drop '" .. dsl.quillforge.config.inkType .. "'"
+                , dsl.quillforge.writer.state.echoOnly)
+              sendLine("sac '" .. dsl.quillforge.config.inkType .. "'"
+                , dsl.quillforge.writer.state.echoOnly)
+              sendLine("put '" .. dsl.quillforge.config.quill .. "' '" .. dsl.quillforge.config.container .. "'"
+                , dsl.quillforge.writer.state.echoOnly)
+                
+              if not dsl.quillforge.writer.state.rewrite then
+                sendLine("put '" ..dsl.quillforge.writer.state.book.names .."' '" ..dsl.quillforge.config.container .."'"
+                  , dsl.quillforge.writer.state.echoOnly)
+              end
+            end
+      
+            if dsl.quillforge.writer.state.rewrite then
+              dsl.quillforge.helpers.echoMessage("Finished rewriting&lt;reset&gt; \"" .. dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\"")
+              killTriggers()
+            else
+              if dsl.quillforge.writer.state.numberOfCopies == nil 
+                or dsl.quillforge.writer.state.numberOfCopies &lt;= 1 then
+                dsl.quillforge.helpers.echoMessage("Finished writing&lt;reset&gt; \"" ..dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\"")
+                killTriggers()
+              else
+                dsl.quillforge.writer.state.numberOfCopies = dsl.quillforge.writer.state.numberOfCopies - 1
+                dsl.quillforge.helpers.echoMessage("Finished writing&lt;reset&gt; \"" ..dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\" - " .. dsl.quillforge.writer.state.numberOfCopies .." more to write")
+                write(dsl.quillforge.writer.state.book, 
+                  dsl.quillforge.writer.state.rewrite, 
+                  dsl.quillforge.writer.state.echoOnly, 
+                  dsl.quillforge.writer.state.viewOnly, 
+                  dsl.quillforge.writer.state.pageNumberOnly, 
+                  dsl.quillforge.writer.state.numberOfCopies)
+              end
+            end
+          else
+            writeNextPage()
+          end
+        end
+      )
+      
+      dsl.quillforge.writer.state.currentPageIndex = 1
+      writeNextPage()
+    else 
+      -- Write document
+      
+      createTrigger(
+        "Dip what in what?", 
+        function()
+          deleteLine()
+          
+          if not rewrite then 
+            sendLine("drop '" ..dsl.quillforge.config.inkType .."'", echoOnly)
+            sendLine("sac '" ..dsl.quillforge.config.inkType .."'", echoOnly)
+            sendLine("put '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.container .."'", echoOnly)
+            sendLine("put '" ..book.names .."' '" ..dsl.quillforge.config.container .."'", echoOnly)
+          end
+          
+          if numberOfCopies == nil or numberOfCopies &lt;= 1 then
+            if not rewrite then
+              dsl.quillforge.helpers.echoMessage("Finished writing&lt;reset&gt; \"" ..dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\"")
+            else
+              dsl.quillforge.helpers.echoMessage("Finished rewriting&lt;reset&gt; \"" ..dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\"")
+            end
+            killTriggers()
+          else
+            numberOfCopies = numberOfCopies - 1
+            dsl.quillforge.helpers.echoMessage("Finished writing&lt;reset&gt; \"" ..dsl.quillforge.helpers.replaceColorCodes(book.title) .."&lt;green&gt;\" - " .. numberOfCopies .." more to write")
+            write(book, rewrite, echoOnly, viewOnly, pageNumberOnly, numberOfCopies)
+          end
+        end
+      )     
+      
+      local totalCharacters = 0
+      
+      sendLine("dip '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.inkType .."'", echoOnly)
+      sendLine("write '" ..book.names .."'", echoOnly)
+      sendLine(".c", echoOnly)
+      
+      for k, line in pairs(parsedLines) do
+        totalCharacters = totalCharacters + string.len(line)
+        totalCharacters = totalCharacters + 2 -- add 2 for new lines
+        line = dsl.quillforge.helpers.stringReplace(line, "~", "{-")
+        sendLine(""..line, echoOnly)
+      end
+      
+      sendLine("@", echoOnly)
+      send("dip", true)
+      
+      dsl.quillforge.helpers.echoMessage("Total characters: " .. totalCharacters)
+    end
+  end
+end
+
+function dsl.quillforge.writer.view(obj, pageNumber)
+  write(obj, false, false, true, pageNumber)
+end
+
+function dsl.quillforge.writer.writeBook(book, numberOfCopies)
+  write(book, false, false, false, nil, numberOfCopies)
+end
+
+function dsl.quillforge.writer.rewriteBook(book, pageNumber)
+  write(book, true, false, false, pageNumber)
+end
+
+function dsl.quillforge.writer.testBook(book, numberOfCopies)
+  write(book, false, true, false, nil, numberOfCopies)
+end
+
+function dsl.quillforge.writer.testRewriteBook(book, pageNumber)
+  write(book, true, true, false, pageNumber)
+end
+
+function dsl.quillforge.writer.writeDoc(doc, numberOfCopies)
+  write(doc, false, false, false, nil, numberOfCopies)
+end
+
+function dsl.quillforge.writer.rewriteDoc(doc)
+  write(doc, true, false, false, nil)
+end
+
+function dsl.quillforge.writer.testDoc(doc, numberOfCopies)
+  write(doc, false, true, false, nil, numberOfCopies)
+end
+
+function dsl.quillforge.writer.testRewriteDoc(doc)
+  write(doc, true, true, false, nil)
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Cloner</name>
+				<packageName></packageName>
+				<script>dsl.quillforge.cloner = dsl.quillforge.cloner or {}
+dsl.quillforge.cloner.state = dsl.quillforge.cloner.state or {}
+dsl.quillforge.cloner.tempTriggers = dsl.quillforge.cloner.tempTriggers or {}
+dsl.quillforge.cloner.eventhandlers = dsl.quillforge.cloner.eventhandlers or {}
+dsl.quillforge.cloner.aliases = dsl.quillforge.cloner.aliases or {}
+dsl.quillforge.cloner.triggers = dsl.quillforge.cloner.triggers or {}
+dsl.quillforge.cloner.timers = dsl.quillforge.cloner.timers or {}
+
+local function cleanup(dispose)
+	for _, aliasId in pairs(dsl.quillforge.cloner.aliases) do
+		killAlias(aliasId)
+	end
+  dsl.quillforge.cloner.aliases = {}
+
+	for _, triggerId in pairs(dsl.quillforge.cloner.triggers) do
+		killTrigger(triggerId)
+	end
+  dsl.quillforge.cloner.triggers = {}
+
+	for _, timerId in pairs(dsl.quillforge.cloner.timers) do
+		killTimer(timerId)
+	end
+  dsl.quillforge.cloner.timers = {}
+
+	if dsl.quillforge.cloner.uninstallHandler ~= nil then
+		killAnonymousEventHandler(dsl.quillforge.cloner.uninstallHandler)
+    dsl.quillforge.cloner.uninstallHandler = nil
+	end
+
+	if dispose then
+		dsl.quillforge.cloner = nil
+	end
+end
+
+local function createAliasFunction(alias, func)
+	dsl.quillforge.cloner.aliases[alias] = tempAlias("^" .. alias .. "$", func)
+end
+local function createTempTrigger(substring, func)
+	table.insert(dsl.quillforge.cloner.tempTriggers, tempTrigger(substring, func))
+end
+local function createTempRegexTrigger(regex, func)
+	table.insert(dsl.quillforge.cloner.tempTriggers, tempRegexTrigger(regex, func))
+end
+local function createTimer(seconds, func)
+	table.insert(dsl.quillforge.cloner.timers, tempTimer(seconds, func))
+end
+local function createHandler(eventName, func)
+	table.insert(dsl.quillforge.cloner.eventhandlers, registerAnonymousEventHandler(eventName, func))
+end
+
+local function killTempTriggers()
+	for _, triggerId in pairs(dsl.quillforge.cloner.tempTriggers) do
+		killTrigger(triggerId)
+	end
+  dsl.quillforge.cloner.tempTriggers = {}
+end
+
+local function killEventHandlers()
+	for _, handlerId in pairs(dsl.quillforge.cloner.eventhandlers) do
+		killAnonymousEventHandler(handlerId)
+	end
+  dsl.quillforge.cloner.eventhandlers = {}
+end
+
+local function killTimers()
+	for _, timerId in pairs(dsl.quillforge.cloner.timers) do
+		killTimer(timerId)
+	end
+  dsl.quillforge.cloner.timers = {}
+end
+
+local function onStop()
+	if dsl.quillforge.cloner.names ~= nil then
+		dsl.functions.echoMessage("Book duplication off")
+	end
+	killTempTriggers()
+	killEventHandlers()
+	killTimers()
+	--dsl.quillforge.cloner.names = nil
+	--dsl.quillforge.cloner.page = nil
+end
+
+local function sortedKeys(query, sortFunction)
+	local keys, len = {}, 0
+	for k, _ in pairs(query) do
+		len = len + 1
+		keys[len] = k
+	end
+	table.sort(keys, sortFunction)
+	return keys
+end
+
+local function replaceColorCodes(line)
+	line = string.gsub(line, "&lt;r&gt;&lt;128,0,0:0,0,0&gt;", "{r")
+	line = string.gsub(line, "&lt;128,0,0:0,0,0&gt;", "{r")
+	line = string.gsub(line, "&lt;r&gt;&lt;255,0,0:0,0,0&gt;", "{R")
+	line = string.gsub(line, "&lt;255,0,0:0,0,0&gt;", "{R")
+	line = string.gsub(line, "&lt;r&gt;&lt;128,128,0:0,0,0&gt;", "{y")
+	line = string.gsub(line, "&lt;128,128,0:0,0,0&gt;", "{y")
+	line = string.gsub(line, "&lt;r&gt;&lt;255,255,0:0,0,0&gt;", "{Y")
+	line = string.gsub(line, "&lt;255,255,0:0,0,0&gt;", "{Y")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,0,128:0,0,0&gt;", "{b")
+	line = string.gsub(line, "&lt;0,0,128:0,0,0&gt;", "{b")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,0,255:0,0,0&gt;", "{B")
+	line = string.gsub(line, "&lt;0,0,255:0,0,0&gt;", "{B")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,128,128:0,0,0&gt;", "{c")
+	line = string.gsub(line, "&lt;0,128,128:0,0,0&gt;", "{c")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,255,255:0,0,0&gt;", "{C")
+	line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;", "{C")
+	line = string.gsub(line, "&lt;r&gt;&lt;128,0,128:0,0,0&gt;", "{m")
+	line = string.gsub(line, "&lt;128,0,128:0,0,0&gt;", "{m")
+	line = string.gsub(line, "&lt;r&gt;&lt;255,0,255:0,0,0&gt;", "{M")
+	line = string.gsub(line, "&lt;255,0,255:0,0,0&gt;", "{M")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,128,0:0,0,0&gt;", "{g")
+	line = string.gsub(line, "&lt;0,128,0:0,0,0&gt;", "{g")
+	line = string.gsub(line, "&lt;r&gt;&lt;0,255,0:0,0,0&gt;", "{G")
+	line = string.gsub(line, "&lt;0,255,0:0,0,0&gt;", "{G")
+	line = string.gsub(line, "&lt;r&gt;&lt;128,128,128:0,0,0&gt;", "{D")
+	line = string.gsub(line, "&lt;128,128,128:0,0,0&gt;", "{D")
+	line = string.gsub(line, "&lt;r&gt;&lt;255,255,255:0,0,0&gt;", "{W")
+	line = string.gsub(line, "&lt;255,255,255:0,0,0&gt;", "{W")
+	line = string.gsub(line, "&lt;r&gt;&lt;215,95,0:0,0,0&gt;", "{o")
+	line = string.gsub(line, "&lt;215,95,0:0,0,0&gt;", "{o")
+	line = string.gsub(line, "&lt;r&gt;&lt;255,95,175:0,0,0&gt;", "{p")
+	line = string.gsub(line, "&lt;255,95,175:0,0,0&gt;", "{p")
+	line = string.gsub(line, "&lt;r&gt;&lt;175,95,0:0,0,0&gt;", "{n")
+	line = string.gsub(line, "&lt;175,95,0:0,0,0&gt;", "{n")
+	line = string.gsub(line, "&lt;r&gt;&lt;95,95,175:0,0,0&gt;", "{u")
+	line = string.gsub(line, "&lt;95,95,175:0,0,0&gt;", "{u")
+	line = string.gsub(line, "&lt;r&gt;&lt;192,192,192:0,0,0&gt;", "{x")
+	line = string.gsub(line, "&lt;192,192,192:0,0,0&gt;", "{x")
+	line = string.gsub(line, "&lt;r&gt;", "{x")
+	line = string.gsub(line, "~", "{-")
+	return line
+end
+
+local function readNextPage()
+	send("read '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.numberOfPages)
+end
+
+local function setTriggers()
+	createTempRegexTrigger("^(?&lt;linenumber&gt;[0-9]{3})&gt;\\s(?&lt;line&gt;.*)$", function()
+		if dsl.quillforge.cloner.readingbook then
+			local line = copy2decho()
+			if matches.linenumber == "001" then
+				dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page] = {}
+			end
+
+			if dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page] ~= nil then
+				line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;192,192,192:0,0,0&gt;&gt; ", "")
+				line = string.gsub(line, "{", "{{")
+				line = replaceColorCodes(line)
+				if line == " {x" then
+					line = " "
+				end
+				if string.sub(line, 1, 1) == "." then
+					line = " " .. line
+				end
+				dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page][matches.linenumber] = line
+			end
+		end
+	end)
+	createTempRegexTrigger("^(.*) is here waiting to be read.$", function()
+		if dsl.quillforge.cloner.readingbook then
+			local line = copy2decho()
+			line = string.gsub(line, " is here waiting to be read.", "")
+			line = replaceColorCodes(line)
+			dsl.quillforge.cloner.title = line
+		end
+	end)
+	createTempTrigger("That page seems to be blank.", function()
+		if dsl.quillforge.cloner.readingbook and dsl.quillforge.cloner.numberOfPages &gt; 1 then
+			dsl.quillforge.cloner.numberOfPages = dsl.quillforge.cloner.numberOfPages - 1
+			readNextPage()
+		end
+	end)
+	createTempTrigger("I see no quill here.", function()
+		onStop()
+		send("~")
+	end)
+end
+
+local function setEventHandlers()
+	createHandler("dsl.stop", onStop)
+end
+
+local function doDuplicateBook(scriptOnly)
+	killTempTriggers()
+	killEventHandlers()
+	killTimers()
+
+	dsl.quillforge.cloner.names = matches[2]
+	dsl.quillforge.cloner.numberOfPages = 50
+	dsl.quillforge.cloner.pages = {}
+	dsl.quillforge.cloner.page = 0
+	dsl.quillforge.cloner.title = nil
+	dsl.quillforge.cloner.readingbook = true
+
+	setTriggers()
+	setEventHandlers()
+
+	send("look '" .. dsl.quillforge.cloner.names .. "'")
+	readNextPage()
+
+	createTimer(30, function()
+		dsl.functions.echoMessage("Number of pages: " .. dsl.quillforge.cloner.numberOfPages)
+		send("get 'squid ink' pockets")
+		send("get quill pockets")
+		local waitTime = 0
+		for i = 1, dsl.quillforge.cloner.numberOfPages, 1 do
+			createTimer(waitTime, function()
+				dsl.quillforge.cloner.page = dsl.quillforge.cloner.page + 1
+				-- TODO: Figure out why this is going higher than last page
+				if dsl.quillforge.cloner.page &lt;= dsl.quillforge.cloner.numberOfPages then
+					send("dip quill 'squid ink'")
+					send("write '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.page)
+					send(".s")
+					send("@")
+				end
+			end)
+			waitTime = waitTime + 5
+		end
+
+		createTimer(waitTime + 5, function()
+			dsl.quillforge.cloner.readingbook = false
+			send("put '" .. dsl.quillforge.cloner.names .. "' pockets")
+			send("drop 'squid ink'")
+			send("sac 'squid ink'")
+
+			local writeWaitTime = 0
+			if not scriptOnly then
+				send("get 'squid ink' pockets")
+				local bookType = "thin book" -- Shokono
+				if #dsl.quillforge.cloner.pages &gt; 5 then
+					bookType = "small book" -- Shokono
+				end
+				if #dsl.quillforge.cloner.pages &gt; 15 then
+					bookType = "thick book"
+				end
+
+				send("get '" .. bookType .. "' pockets")
+				for page, lines in pairs(dsl.quillforge.cloner.pages) do
+					local keys = sortedKeys(lines)
+					createTimer(writeWaitTime, function()
+						dsl.functions.echoMessage(
+							"Starting to write page " .. page .. " of " .. dsl.quillforge.cloner.numberOfPages
+						)
+						send("dip quill 'squid ink'")
+						send("write '" .. bookType .. "' page " .. page)
+						local lineIndex = 1
+						for _, key in pairs(keys) do
+							if lineIndex &lt; #keys then
+								send(lines[key])
+							end
+							lineIndex = lineIndex + 1
+						end
+						send("@")
+					end)
+					createTimer(writeWaitTime + 2, function()
+						dsl.functions.echoMessage(
+							"Currently writing page " .. page .. " of " .. dsl.quillforge.cloner.numberOfPages
+						)
+					end)
+					local addTime = (#keys / 2)
+					if addTime &lt; 4 then
+						addTime = 6
+					end
+					writeWaitTime = writeWaitTime + addTime
+				end
+
+				createTimer(writeWaitTime + 2, function()
+					send("dip quill 'squid ink'")
+					send("write '" .. bookType .. "' title " .. dsl.quillforge.cloner.title)
+					send("drop 'squid ink'")
+					send("sac 'squid ink'")
+					send("put quill pockets")
+					dsl.functions.echoMessage("Finished duplicating book")
+				end)
+			end
+
+			createTimer(writeWaitTime + 4, function()
+				local title = string.gsub(dsl.quillforge.cloner.title, '"', '\\"')
+				local alias = string.gsub(dsl.quillforge.cloner.names, " ", "")
+				dsl.quillforge.cloner.bookscript = ""
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
+					.. 'raiseEvent("dsl.bookengine.registerbook",\n'
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "{\n"
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. '  alias = "' .. alias .. '",\n'
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
+					.. '  names = "'
+					.. dsl.quillforge.cloner.names
+					.. '",\n'
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. '  title = "' .. title .. '", \n'
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "  pages = {\n"
+				for page, lines in pairs(dsl.quillforge.cloner.pages) do
+					dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "    {\n"
+					local keys = sortedKeys(lines)
+					local lineIndex = 1
+					for _, key in pairs(keys) do
+						if lineIndex &lt; #keys then
+							local line = string.gsub(line, "\\", "\\\\")
+							line = string.gsub(lines[key], '"', '\\"')
+							dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
+								.. '      "'
+								.. line
+								.. '",\n'
+						end
+						lineIndex = lineIndex + 1
+					end
+					dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "    },\n"
+				end
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "  }\n"
+				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "})\n"
+				echo("\n")
+				echo(dsl.quillforge.cloner.bookscript)
+				onStop()
+			end)
+		end)
+	end)
+end
+
+function dsl.quillforge.cloner.init()
+	cleanup(false)
+
+	dsl.quillforge.cloner.uninstallHandler = registerAnonymousEventHandler("sysUninstallPackage", function(_, packageName)
+		if packageName == "dslscripts" then
+			cleanup(true)
+		end
+	end)
+
+	createAliasFunction("duplicatebook (.*)", function()
+		doDuplicateBook(false)
+	end)
+
+	createAliasFunction("duplicatebookscript (.*)", function()
+		doDuplicateBook(true)
+	end)
+end
+</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Searcher</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.searcher = dsl.quillforge.searcher or {}
+dsl.quillforge.searcher.state = dsl.quillforge.searcher.state or {}
+
+local function finishSearchingBooks()
+  dsl.quillforge.helpers.echoMessage("Finished searching for books in " ..dsl.quillforge.searcher.state.searchContainer)
+  for book, count in pairs(dsl.quillforge.searcher.state.searchBookCounts) do
+    local spacing = "  "
+    
+    if count &gt; 100 then
+      spacing = ""
+    elseif count &gt; 10 then
+      spacing = " "
+    end
+    
+    if count == 0 then
+      cecho("\n&lt;red&gt;" ..count ..spacing .." - " .. book .."&lt;reset&gt;")
+    else
+      echo("\n" ..count ..spacing .." - " .. book)
+    end
+  end
+  
+  echo("\n")
+  
+  if dsl.quillforge.searcher.searchTrigger1 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger1)
+  end
+  if dsl.quillforge.searcher.searchTrigger2 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger2)
+  end
+end
+
+local function getSearchBooksContainerTrigger()
+  return tempRegexTrigger("\\\(?\\s?(?&lt;count&gt;[0-9]*)?\\\)?(\\s*?\\\(Glowing\\\))?\\s*(?&lt;title&gt;.*)", function()
+    local foundBook = nil
+    for alias, book in pairs(dsl.quillforge.books) do
+      if alias == dsl.quillforge.searcher.state.searchBook then
+        foundBook = book
+      end
+    end
+    
+    if foundBook then
+      local foundBookTitle = dsl.quillforge.helpers.clearColorCodes(foundBook.title)
+      if matches.title == foundBookTitle then
+        local count = matches.count
+        if count == "" then
+          count = "1"
+        end
+        dsl.quillforge.searcher.state.searchBookCounts[foundBookTitle] = dsl.quillforge.searcher.state.searchBookCounts[foundBookTitle] + tonumber(count)
+      end
+    end
+    if matches.title == "" then
+      killTrigger(dsl.quillforge.searcher.searchTrigger2)
+      for alias, book in pairs(dsl.quillforge.books) do
+        if not book.skipSearchingContainer and not book.isTemplate then
+          if dsl.quillforge.searcher.state.searchBook == nil then
+            dsl.quillforge.searcher.state.searchBook = alias
+            send("search " .. dsl.quillforge.searcher.state.searchContainer .." '" ..book.names .."'")
+          elseif alias == dsl.quillforge.searcher.state.searchBook then
+            dsl.quillforge.searcher.state.searchBook = nil
+          end
+        end
+      end
+      
+      if dsl.quillforge.searcher.state.searchBook == nil then
+        finishSearchingBooks()
+      end
+    end
+  end)
+end
+
+function dsl.quillforge.searcher.searchBooks(container)
+  dsl.quillforge.searcher.state.searchingContainer = true
+  dsl.quillforge.searcher.state.searchContainer = container
+  dsl.quillforge.searcher.state.searchBookCounts = {}
+  dsl.quillforge.searcher.state.searchCount = 0
+  dsl.quillforge.searcher.state.searchBook = nil
+  
+  if dsl.quillforge.searcher.searchTrigger1 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger1)
+  end
+  if dsl.quillforge.searcher.searchTrigger2 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger2)
+  end
+  
+  dsl.quillforge.searcher.searchTrigger1 = tempRegexTrigger("Your search of (.*) finds:", function()
+    dsl.quillforge.searcher.searchTrigger2 = getSearchBooksContainerTrigger()
+  end)
+  
+  for alias, book in pairs(dsl.quillforge.books) do
+    if not book.skipSearchingContainer and not book.isTemplate then
+      if dsl.quillforge.searcher.state.searchBook == nil then
+        dsl.quillforge.searcher.state.searchBook = alias
+      end
+      
+      local title = dsl.quillforge.helpers.clearColorCodes(book.title)
+      dsl.quillforge.searcher.state.searchBookCounts[title] = 0
+    end
+  end
+  
+  dsl.quillforge.helpers.echoMessage("Searching for books in " ..dsl.quillforge.searcher.state.searchContainer)
+  
+  for alias, book in pairs(dsl.quillforge.books) do
+    if alias == dsl.quillforge.searcher.state.searchBook then
+      send("search " .. dsl.quillforge.searcher.state.searchContainer .." '" ..book.names .."'")
+    end
+  end
+end
+
+local function finishSearchingDocs()
+  dsl.quillforge.helpers.echoMessage("Finished searching for documents in " ..dsl.quillforge.searcher.state.searchContainer)
+  for doc, count in pairs(dsl.quillforge.searcher.state.searchDocsCounts) do
+    local spacing = "  "
+    
+    if count &gt; 100 then
+      spacing = ""
+    elseif count &gt; 10 then
+      spacing = " "
+    end
+    
+    if count == 0 then
+      cecho("\n&lt;red&gt;" ..count ..spacing .." - " .. doc .."&lt;reset&gt;")
+    else
+      echo("\n" ..count ..spacing .." - " .. doc)
+    end
+  end
+  
+  echo("\n")
+  
+  if dsl.quillforge.searcher.searchTrigger1 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger1)
+  end
+  if dsl.quillforge.searcher.searchTrigger2 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger2)
+  end
+end
+
+local function getSearchDocsContainerTrigger()
+  return tempRegexTrigger("\\\(?\\s?(?&lt;count&gt;[0-9]*)?\\\)?(\\s*?\\\(Glowing\\\))?\\s*(?&lt;title&gt;.*)", function()
+    local foundDoc = nil
+    for alias, doc in pairs(dsl.quillforge.docs) do
+      if alias == dsl.quillforge.searcher.state.searchDoc then
+        foundDoc = doc
+      end
+    end
+    
+    if foundDoc then
+      local foundDocTitle = dsl.quillforge.helpers.clearColorCodes(foundDoc.title)
+      if matches.title == foundDocTitle then
+        local count = matches.count
+        if count == "" then
+          count = "1"
+        end
+        dsl.quillforge.searcher.state.searchDocsCounts[foundDocTitle] = dsl.quillforge.searcher.state.searchDocsCounts[foundDocTitle] + tonumber(count)
+      end
+    end
+    if matches.title == "" then
+      killTrigger(dsl.quillforge.searcher.searchTrigger2)
+      for alias, doc in pairs(dsl.quillforge.docs) do
+        if not doc.skipSearchingContainer and not doc.isTemplate then
+          if dsl.quillforge.searcher.state.searchDoc == nil then
+            dsl.quillforge.searcher.state.searchDoc = alias
+            send("search " .. dsl.quillforge.searcher.state.searchContainer .." '" ..doc.names .."'")
+          elseif alias == dsl.quillforge.searcher.state.searchDoc then
+            dsl.quillforge.searcher.state.searchDoc = nil
+          end
+        end
+      end
+      
+      if dsl.quillforge.searcher.state.searchDoc == nil then
+        finishSearchingDocs()
+      end
+    end
+  end)
+end
+
+function dsl.quillforge.searcher.searchDocs(container)
+  dsl.quillforge.searcher.state.searchingContainer = true
+  dsl.quillforge.searcher.state.searchContainer = container
+  dsl.quillforge.searcher.state.searchDocsCounts = {}
+  dsl.quillforge.searcher.state.searchCount = 0
+  dsl.quillforge.searcher.state.searchDoc = nil
+  
+  if dsl.quillforge.searcher.searchTrigger1 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger1)
+  end
+  if dsl.quillforge.searcher.searchTrigger2 then
+    killTrigger(dsl.quillforge.searcher.searchTrigger2)
+  end
+  
+  dsl.quillforge.searcher.searchTrigger1 = tempRegexTrigger("Your search of (.*) finds:", function()
+    dsl.quillforge.searcher.searchTrigger2 = getSearchDocsContainerTrigger()
+  end)
+  
+  for alias, doc in pairs(dsl.quillforge.docs) do
+    if not doc.skipSearchingContainer and not doc.isTemplate then
+      if dsl.quillforge.searcher.state.searchDoc == nil then
+        dsl.quillforge.searcher.state.searchDoc = alias
+      end
+      
+      local title = dsl.quillforge.helpers.clearColorCodes(doc.title)
+      dsl.quillforge.searcher.state.searchDocsCounts[title] = 0
+    end
+  end
+  
+  dsl.quillforge.helpers.echoMessage("Searching for documents in " ..dsl.quillforge.searcher.state.searchContainer)
+  
+  for alias, doc in pairs(dsl.quillforge.docs) do
+    if alias == dsl.quillforge.searcher.state.searchDoc then
+      send("search " .. dsl.quillforge.searcher.state.searchContainer .." '" ..doc.names .."'")
+    end
+  end
+end
+
+if dsl.quillforge.searcher.stopHandler ~= nil then
+	killAnonymousEventHandler(dsl.quillforge.searcher.stopHandler)
+end
+
+dsl.quillforge.searcher.stopHandler = registerAnonymousEventHandler(
+  "dsl.quillforge.stop", 
+  function()
+    if dsl.quillforge.searcher.searchTrigger1 then
+      killTrigger(dsl.quillforge.state.searchTrigger1)
+    end
+    if dsl.quillforge.searcher.searchTrigger2 then
+      killTrigger(dsl.quillforge.searcher.searchTrigger2)
+    end
+  end)</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Lister</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.books = dsl.quillforge.books or {}
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+dsl.quillforge.lister = dsl.quillforge.lister or {}
+
+function dsl.quillforge.lister.displayAvailableBooks()
+  dsl.quillforge.helpers.echoMessage("Available Books:")
+  local bookTypeCounts = {}
+  local totalBookCount = 0
+  
+  for alias, book in pairs(dsl.quillforge.books) do
+    if not book.isTemplate then
+      local bookType = dsl.quillforge.helpers.getBookTypeNeeded(book)
+      totalBookCount = totalBookCount + 1
+      
+      if bookTypeCounts[bookType] == nil then
+        bookTypeCounts[bookType] = 1
+      else
+        bookTypeCounts[bookType] = bookTypeCounts[bookType] + 1
+      end
+      
+      local numberOfPages = #book.pages
+      cecho("\n&lt;yellow&gt;" ..alias .."&lt;reset&gt; - " .. numberOfPages .. " pages requires a " ..bookType)
+    end
+  end
+  
+  echo("\n\nTotal supplies needed for entire set:")
+  for bookType, count in pairs(bookTypeCounts) do
+    echo("\n" ..bookType ..": " ..count)
+  end
+  echo("\nink: " ..totalBookCount)
+  echo("\n")
+end
+
+function dsl.quillforge.lister.displayAvailableDocuments()
+  dsl.quillforge.helpers.echoMessage("Available Documents:")
+  local totalDocCount = 0
+  
+  for alias, doc in pairs(dsl.quillforge.docs) do
+    if not doc.isTemplate then
+      totalDocCount = totalDocCount + 1
+      cecho("\n&lt;yellow&gt;" ..alias .."&lt;reset&gt;")
+    end
+  end
+  
+  echo("\n\nTotal supplies needed for entire set:")
+  echo("\nparchment: " ..totalDocCount)
+  echo("\nink: " ..totalDocCount)
+  echo("\n")
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Parser</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.parser = dsl.quillforge.parser or {}
+
+local function getTitleLine(title, book, isSubtitle)
+  local titleLength = string.len(dsl.quillforge.helpers.clearColorCodes(title))
+  
+  local bookPageWidth = dsl.quillforge.config.pageWidth
+  
+  if book ~= nil and book.pageWidth ~= nil then
+    bookPageWidth = book.pageWidth
+  end
+  
+  if (not isSubtitle and book.titleLeft and book.titleRight)
+    or (isSubtitle and book.subtitleLeft and book.subtitleRight) then
+    local titleLeft = book.titleLeft
+    local titleRight = book.titleRight
+    
+    if isSubtitle then
+      titleLeft = book.subtitleLeft
+      titleRight = book.subtitleRight
+    end
+    
+    local leftLength = string.len(dsl.quillforge.helpers.clearColorCodes(titleLeft))
+    local rightLength = string.len(dsl.quillforge.helpers.clearColorCodes(titleRight))
+    
+    local spacing = math.floor((bookPageWidth - leftLength - rightLength - titleLength) / 2)
+    
+    while spacing &gt; 0 and ((spacing * 2) + leftLength + rightLength + titleLength) &gt; bookPageWidth do
+      spacing = spacing - 1
+    end 
+    
+    return titleLeft
+      .. string.rep(" ", spacing)
+      .. title 
+      .. string.rep(" ", spacing)
+      .. titleRight
+  else
+    local titlePattern = dsl.quillforge.config.defaultTitlePattern
+    
+    if not isSubtitle and book.titlePattern then
+      titlePattern = book.titlePattern
+    end
+    if isSubtitle and book.subtitlePattern then
+      titlePattern = book.subtitlePattern
+    end
+    local titlePatternLength = string.len(dsl.quillforge.helpers.clearColorCodes(titlePattern))
+    local titleSpacing = " "
+    
+    if not isSubtitle and book.titleSpacing ~= nil then
+      titleSpacing = book.titleSpacing
+    end
+    if isSubtitle and book.subtitleSpacing ~= nil then
+      titleSpacing = book.subtitleSpacing
+    end
+    
+    local titleSpacingLength = string.len(titleSpacing)
+    
+    local titleStr = title
+    local titleDone = false
+    
+    if string.len(titleStr) + (titleSpacingLength * 2) &lt;= bookPageWidth then
+      titleStr = titleSpacing ..titleStr ..titleSpacing
+    end
+    
+    while not titleDone do
+      if (string.len(dsl.quillforge.helpers.clearColorCodes(titleStr)) + (titlePatternLength * 2)) &lt; bookPageWidth then
+        titleStr = titlePattern ..titleStr ..titlePattern
+      else
+        titleDone = true
+      end
+    end 
+    
+    return titleStr
+  end
+end
+
+local function getOrdinalSuffix(day)
+  local remainder10 = day % 10
+  local remainder100 = day % 100
+
+  if remainder10 == 1 and remainder100 ~= 11 then
+    return "st"
+  elseif remainder10 == 2 and remainder100 ~= 12 then
+    return "nd"
+  elseif remainder10 == 3 and remainder100 ~= 13 then
+    return "rd"
+  else
+    return "th"
+  end
+end
+
+local function getDateString()
+  local day = tonumber(os.date("%d"))
+  local suffix = getOrdinalSuffix(day)
+  local month = os.date("%B")
+  local year = os.date("%Y")
+  local formattedDate = string.format("Scribed on the %d%s day of the Month of %s, in the Year %s, by the Old Calendar", day, suffix, month, year)
+  return formattedDate
+end
+
+local function getEnergyAmount(mana, useAlt)
+  if mana == "?" then
+    return "an unknown amount"
+  end
+  
+  local manaNumber = tonumber(mana)
+  
+  if manaNumber &lt;= 5 then
+    return "negligible"
+  elseif manaNumber &lt; 10 then
+    return "slightly less than casting fly"
+  elseif manaNumber == 10 then
+    if useAlt then
+      return "equivalent to casting farsight"
+    else
+      return "equivalent to casting fly"
+    end
+  elseif manaNumber &lt; 15 then
+    return "slightly less than casting fireball"
+  elseif manaNumber == 15 then
+    if useAlt then
+      return "equivalent of casting dispel magic"
+    else
+      return "equivalent of casting fireball"
+    end
+  elseif manaNumber &lt; 20 then
+    return "slightly more than casting fireball"
+  elseif manaNumber == 20 then
+    if useAlt then
+      return "equivalent of casting locate object"
+    else
+      return "equivalent of casting acid blast"
+    end
+  elseif manaNumber &lt; 25 then
+    return "slightly more than casting acid blast"
+  elseif manaNumber == 25 then
+    if useAlt then
+      return "equivalent of casting cancellation and armor"
+    else
+      return "equivalent of casting chain lightning"
+    end
+  elseif manaNumber &lt; 30 then
+    return "slightly more than casting chain lightning"
+  elseif manaNumber == 30 then
+    return "equivalent of casting two fireballs"
+  elseif manaNumber &lt; 35 then
+    return "slightly less than casting teleport"
+  elseif manaNumber == 35 then
+    if useAlt then
+      return "equivalent of casting acid blast and fireball"
+    else
+      return "equivalent of casting teleport"
+    end
+  elseif manaNumber &lt; 40 then
+    return "slightly more than casting teleport"
+  elseif manaNumber == 40 then
+    return "equivalent of casting two acid blasts"
+  elseif manaNumber &lt; 45 then
+    return "slightly more than casting two acid blasts"
+  elseif manaNumber == 45 then
+    return "equivalent of casting acid blast and a chain lightning"
+  elseif manaNumber &lt; 50 then
+    return "slightly less than casting summon"
+  elseif manaNumber == 50 then
+    if useAlt then
+      return "equivalent of casting two chain lightnings"
+    else
+      return "equivalent of casting summon"
+    end
+  elseif manaNumber &lt; 55  then
+    return "slightly more than casting summon"
+  elseif manaNumber == 55 then
+    return "equivalent of casting two acid blasts and a fireball"
+  elseif manaNumber &lt; 60 then
+    return "slightly less than casting a teleport and chain lightning"
+  elseif manaNumber == 60 then
+    return "equivalent of casting a teleport and chain lightning"
+  elseif manaNumber &lt; 65 then
+    return "slightly more than casting a teleport and chain lightning"
+  elseif manaNumber == 65 then
+    return "equivalent of casting a summon and a fireball"
+  elseif manaNumber &lt; 70 then
+    return "slightly more than casting a summon and a fireball"
+  elseif manaNumber &lt; 75 then
+    return "a bit less than casting sanctuary"
+  elseif manaNumber == 75 then
+    if useAlt then
+      return "equivalent of casting a summon and a chain lightning"
+    else
+      return "equivalent of casting sanctuary"
+    end
+  elseif manaNumber &lt; 80 then
+    return "slightly more than casting sanctuary"
+  elseif manaNumber == 80 then
+    if useAlt then
+      return "equivalent of casting four acid blasts"
+    else
+      return "equivalent of casting gate"
+    end
+  elseif manaNumber &lt; 90 then
+    return "between casting a gate and a waypoint"
+  elseif manaNumber == 90 then
+    return "equivalent of casting summon and two acid blasts"
+  elseif manaNumber &lt; 100 then
+    return "between casting a waypoint and a portal"
+  elseif manaNumber == 100 then
+    if useAlt then
+      return "equivalent of casting two summons"
+    else
+      return "equivalent of casting portal"
+    end
+  elseif manaNumber &lt; 150 then
+    return "between casting a portal and a nexus"
+  elseif manaNumber == 150 then
+    if useAlt then
+      return "equivalent of casting a portal and a summon"
+    else
+      return "equivalent of casting nexus"
+    end
+  elseif manaNumber &lt; 300 then
+    return "between casting a nexus and a magewind"
+  elseif manaNumber == 300 then
+    return "equivalent of casting two nexuses"
+  else
+    return "more than casting two nexuses"
+  end
+end
+
+function dsl.quillforge.parser.parseLines(lines, book, pageNumber)
+  local lineIndex = 1
+  local parsedLines = {}
+  local title = nil
+  
+  for k, line in pairs(lines) do
+    if dsl.quillforge.helpers.stringStarts(line, "TITLE ") 
+      or dsl.quillforge.helpers.stringStarts(line, "TITLENOCONTENTS ") 
+      or dsl.quillforge.helpers. stringStarts(line, "CONTENTSTITLE ") then
+      title = dsl.quillforge.helpers.stringReplace(line, "TITLE ", "")
+      title = dsl.quillforge.helpers.stringReplace(title, "TITLENOCONTENTS ", "")
+    end
+  end
+  
+  local bookPageWidth = dsl.quillforge.config.pageWidth
+  
+  if book ~= nil and book.pageWidth ~= nil then
+    bookPageWidth = book.pageWidth
+  end
+  
+  for k, line in pairs(lines) do
+    if line == "BANNER" then
+      local bannerLineCount = 0
+      local banner = dsl.quillforge.config.defaultBanner
+      
+      if book.banner ~= nil then
+        banner = book.banner
+      end
+      
+      for i, line in pairs(banner) do
+        parsedLines[lineIndex + bannerLineCount] = line
+        bannerLineCount = bannerLineCount + 1
+      end
+      
+      lineIndex = lineIndex + bannerLineCount
+    elseif dsl.quillforge.helpers.stringStarts(line, "TITLE ") 
+      or dsl.quillforge.helpers.stringStarts(line, "TITLENOCONTENTS ") 
+      or dsl.quillforge.helpers.stringStarts(line, "CONTENTSTITLE ") then
+      if not dsl.quillforge.helpers.stringStarts(line, "CONTENTSTITLE ") then
+        local titleLine = dsl.quillforge.helpers.stringReplace(line, "TITLE ", "")
+        local titleLine = dsl.quillforge.helpers.stringReplace(titleLine, "TITLENOCONTENTS ", "")
+        local titleLineCountBefore = dsl.quillforge.config.defaultTitleLinesBefore
+        local titleLineCountAfter = dsl.quillforge.config.defaultTitleLinesAfter
+        
+        if book.titleLinesBefore ~= nil then
+          titleLineCountBefore = book.titleLinesBefore
+        end
+        
+        if book.titleLinesAfter ~= nil then
+          titleLineCountAfter = book.titleLinesAfter
+        end
+        
+        local titleIndex = 0
+        for i = titleLineCountBefore, 1, -1 do 
+          parsedLines[lineIndex + titleIndex] = " "
+          titleIndex = titleIndex + 1
+        end
+    
+        parsedLines[lineIndex + titleIndex] = getTitleLine(titleLine, book)
+        titleIndex = titleIndex + 1
+        
+        for i = titleLineCountAfter, 1, -1 do 
+          parsedLines[lineIndex + titleIndex] = " "
+          titleIndex = titleIndex + 1
+        end
+        
+        lineIndex = lineIndex + (titleLineCountBefore + titleLineCountAfter) + 1
+      end
+    elseif dsl.quillforge.helpers.stringStarts(line, "SUBTITLE ") then
+      local subtitleLine = dsl.quillforge.helpers.stringReplace(line, "SUBTITLE ", "")
+      local titleLineCountBefore = dsl.quillforge.config.defaultTitleLinesBefore
+      local titleLineCountAfter = dsl.quillforge.config.defaultTitleLinesAfter
+      
+      if book.subtitleLinesBefore ~= nil then
+        titleLineCountBefore = book.subtitleLinesBefore
+      end
+      
+      if book.subtitleLinesAfter ~= nil then
+        titleLineCountAfter = book.subtitleLinesAfter
+      end
+      
+      local titleIndex = 0
+      for i = titleLineCountBefore, 1, -1 do 
+        parsedLines[lineIndex + titleIndex] = " "
+        titleIndex = titleIndex + 1
+      end
+  
+      parsedLines[lineIndex + titleIndex] = getTitleLine(subtitleLine, book, true)
+      titleIndex = titleIndex + 1
+      
+      for i = titleLineCountAfter, 1, -1 do 
+        parsedLines[lineIndex + titleIndex] = " "
+        titleIndex = titleIndex + 1
+      end
+      
+      lineIndex = lineIndex + (titleLineCountBefore + titleLineCountAfter) + 1
+    elseif dsl.quillforge.helpers.stringStarts(line, "MANA ") 
+      or dsl.quillforge.helpers.stringStarts(line, "MANAALT ") then
+      local energy = "an unknown amount"
+      
+      if dsl.quillforge.helpers.stringStarts(line, "MANAALT ") then
+        local mana = dsl.quillforge.helpers.stringReplace(line, "MANAALT ", "")
+        energy = getEnergyAmount(mana, true)
+      else
+        local mana = dsl.quillforge.helpers.stringReplace(line, "MANA ", "")
+        energy = getEnergyAmount(mana)
+      end
+      
+      parsedLines[lineIndex] = "Energy expended: " ..energy
+      parsedLines[lineIndex + 1] = " "
+      lineIndex = lineIndex + 2
+    elseif dsl.quillforge.helpers.stringStarts(line, "PARAGRAPH ") 
+      or dsl.quillforge.helpers.stringStarts(line, "PARAGRAPH0 ") 
+      or dsl.quillforge.helpers.stringStarts(line, "PARAGRAPHINDENT ") 
+      or dsl.quillforge.helpers.stringStarts(line, "PARAGRAPHINDENT0 ")
+      or line == "DATE" then
+      local text = dsl.quillforge.helpers.stringReplace(line, "PARAGRAPH ", "")
+      
+      if line == "DATE" then
+        text = getDateString()
+      end
+      
+      text = dsl.quillforge.helpers.stringReplace(text, "PARAGRAPH0 ", "")
+      text = dsl.quillforge.helpers.stringReplace(text, "PARAGRAPHINDENT ", "")
+      text = dsl.quillforge.helpers.stringReplace(text, "PARAGRAPHINDENT0 ", "")
+      
+      local isIndented = dsl.quillforge.helpers.stringStarts(line, "PARAGRAPHINDENT ") 
+        or dsl.quillforge.helpers.stringStarts(line, "PARAGRAPHINDENT0 ")
+        
+      local words = {}
+      
+      for word in text:gmatch("[%w-.:*,_\\+!\\)\\(?'\"\\{/]+") do 
+        table.insert(words, word) 
+      end
+      
+      for k, w in pairs(words) do
+        if parsedLines[lineIndex] == nil then
+          if isIndented then
+            parsedLines[lineIndex] = "    " ..w
+          else
+            parsedLines[lineIndex] = w
+          end
+        elseif string.len(parsedLines[lineIndex]) + 1 + string.len(w) &lt; bookPageWidth then
+          parsedLines[lineIndex] = parsedLines[lineIndex] .." " ..w
+        else
+          lineIndex = lineIndex + 1
+          
+          if isIndented then
+            parsedLines[lineIndex] = "    " ..w
+          else
+            parsedLines[lineIndex] = w
+          end
+        end
+      end
+      
+      if dsl.quillforge.helpers.stringStarts(line, "PARAGRAPH0 ") 
+        or dsl.quillforge.helpers.stringStarts(line, "PARAGRAPHINDENT0 ") then
+        lineIndex = lineIndex + 1
+      else
+        parsedLines[lineIndex + 1] = " "
+        lineIndex = lineIndex + 2
+      end
+    elseif line == "CONTENTS" then
+      local pageNumber = 1
+      local numberOfPages = #book.pages
+      
+      for page, lines in pairs(book.pages) do
+        local pageTitle = nil
+        
+        for k, line in pairs(lines) do
+          if dsl.quillforge.helpers.stringStarts(line, "TITLE ") 
+            or dsl.quillforge.helpers.stringStarts(line, "CONTENTSTITLE ") then
+            pageTitle = dsl.quillforge.helpers.stringReplace(line, "TITLE ", "")
+            pageTitle = dsl.quillforge.helpers.stringReplace(pageTitle, "CONTENTSTITLE ", "")
+          end
+        end
+        
+        if pageTitle ~= nil then
+          parsedLines[lineIndex] = "Page "
+          parsedLines[lineIndex] = parsedLines[lineIndex] ..tostring(pageNumber)
+          
+          if numberOfPages ~= nil and numberOfPages &gt;= 10 and pageNumber &lt; 10 then
+            parsedLines[lineIndex] = parsedLines[lineIndex] .." "
+          end
+          
+          parsedLines[lineIndex] = parsedLines[lineIndex] .." - "
+          parsedLines[lineIndex] = parsedLines[lineIndex] ..pageTitle
+          lineIndex = lineIndex + 1
+        end
+        
+        pageNumber = pageNumber + 1
+      end
+    else
+      parsedLines[lineIndex] = line
+      lineIndex = lineIndex + 1
+    end
+  end
+  
+  if book ~= nil then
+    local doPageNumbers = dsl.quillforge.config.addPageNumbers
+    local pageNumLeft = dsl.quillforge.config.pageNumbersLeft
+    local pageNumRight = dsl.quillforge.config.pageNumbersRight
+    
+    if book.addPageNumbers ~= nil then
+      doPageNumbers = book.addPageNumbers
+    end
+    
+    if book.pageNumbersLeft ~= nil then
+      pageNumLeft = book.pageNumbersLeft
+    end
+    
+    if book.pageNumbersRight ~= nil then
+      pageNumRight = book.pageNumbersRight
+    end
+    
+    if doPageNumbers then
+      local leftPageLength = string.len(dsl.quillforge.helpers.clearColorCodes(pageNumLeft))
+      parsedLines[lineIndex + 1] = " "
+      parsedLines[lineIndex + 2] = " "
+      parsedLines[lineIndex + 3] = string.rep(" ", math.floor((bookPageWidth / 2)) - leftPageLength - 1)
+        ..pageNumLeft
+        ..tostring(pageNumber)
+        ..pageNumRight
+    end
+  end
+  
+  return parsedLines
+end
+
+function dsl.quillforge.parser.getIndexedAndParsedPages(book)
+  local numberOfPages = #book.pages
+  local pages = {}
+  local pageIndex = 1
+  
+  for page, lines in pairs(book.pages) do
+    pages[pageIndex] = dsl.quillforge.parser.parseLines(lines, book, pageIndex)
+    pageIndex = pageIndex + 1
+  end 
+  
+  return pages
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Version</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+
+dsl.quillforge.version = {
+  Major = 1,
+  Minor = 0,
+  Patch = 0,
+}</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Initializer</name>
+				<packageName></packageName>
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.helpers = dsl.quillforge.helpers or {}
+
+dsl.quillforge.helpers.echoMessage("&lt;green&gt;📖 DSL QuillForge "
+  .."v" ..dsl.quillforge.helpers.getVersion()
+  .." has been loaded. Type &lt;cyan&gt;quill&lt;green&gt; to begin.&lt;reset&gt; 📖 \n")</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+	</ScriptPackage>
+	<KeyPackage />
+	<HelpPackage>
+		<helpURL></helpURL>
+	</HelpPackage>
+</MudletPackage>
