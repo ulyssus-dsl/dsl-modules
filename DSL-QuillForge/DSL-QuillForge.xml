@@ -544,6 +544,22 @@ end)
 
 createAlias("quill stop", function()
   raiseEvent("dsl.quillforge.stop")
+end)
+
+createAlias("quill clone create book ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneBookCreate(matches[2], matches[3])
+end)
+
+createAlias("quill clone script book ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneBookScript(matches[2], matches[3])
+end)
+
+createAlias("quill clone create doc ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneDocCreate(matches[2], matches[3])
+end)
+
+createAlias("quill clone script doc ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneDocScript(matches[2], matches[3])
 end)</script>
 				<eventHandlerList />
 			</Script>
@@ -1436,6 +1452,7 @@ local function readNextPage()
 end
 
 local function read(obj, readPageNumber)
+  dsl.quillforge.helpers.echoMessage("Beginning to read. Type &lt;cyan&gt;quill stop&lt;green&gt; to cancel reading")
   killTriggers()
   
   table.insert(dsl.quillforge.reader.triggers, 
@@ -1666,6 +1683,9 @@ local function writeNextPage()
 end
 
 local function write(book, rewrite, echoOnly, viewOnly, pageNumberOnly, numberOfCopies)
+  if not viewOnly then
+    dsl.quillforge.helpers.echoMessage("Beginning to write. Type &lt;cyan&gt;quill stop&lt;green&gt; to cancel writing")
+  end
   killTriggers()
   local parsedPages = nil
   local parsedLines = nil
@@ -1978,20 +1998,13 @@ end</script>
 			<Script isActive="yes" isFolder="no">
 				<name>Cloner</name>
 				<packageName></packageName>
-				<script>dsl.quillforge.cloner = dsl.quillforge.cloner or {}
-dsl.quillforge.cloner.state = dsl.quillforge.cloner.state or {}
-dsl.quillforge.cloner.tempTriggers = dsl.quillforge.cloner.tempTriggers or {}
-dsl.quillforge.cloner.eventhandlers = dsl.quillforge.cloner.eventhandlers or {}
-dsl.quillforge.cloner.aliases = dsl.quillforge.cloner.aliases or {}
+				<script>dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+dsl.quillforge.cloner = dsl.quillforge.cloner or {}
 dsl.quillforge.cloner.triggers = dsl.quillforge.cloner.triggers or {}
 dsl.quillforge.cloner.timers = dsl.quillforge.cloner.timers or {}
 
-local function cleanup(dispose)
-	for _, aliasId in pairs(dsl.quillforge.cloner.aliases) do
-		killAlias(aliasId)
-	end
-  dsl.quillforge.cloner.aliases = {}
-
+local function killResources()
 	for _, triggerId in pairs(dsl.quillforge.cloner.triggers) do
 		killTrigger(triggerId)
 	end
@@ -2001,64 +2014,26 @@ local function cleanup(dispose)
 		killTimer(timerId)
 	end
   dsl.quillforge.cloner.timers = {}
-
-	if dsl.quillforge.cloner.uninstallHandler ~= nil then
-		killAnonymousEventHandler(dsl.quillforge.cloner.uninstallHandler)
-    dsl.quillforge.cloner.uninstallHandler = nil
-	end
-
-	if dispose then
-		dsl.quillforge.cloner = nil
-	end
 end
 
-local function createAliasFunction(alias, func)
-	dsl.quillforge.cloner.aliases[alias] = tempAlias("^" .. alias .. "$", func)
+killResources()
+
+local function createTrigger(substring, func)
+	table.insert(dsl.quillforge.cloner.triggers, tempTrigger(substring, func))
 end
-local function createTempTrigger(substring, func)
-	table.insert(dsl.quillforge.cloner.tempTriggers, tempTrigger(substring, func))
-end
-local function createTempRegexTrigger(regex, func)
-	table.insert(dsl.quillforge.cloner.tempTriggers, tempRegexTrigger(regex, func))
+local function createRegexTrigger(regex, func)
+	table.insert(dsl.quillforge.cloner.triggers, tempRegexTrigger(regex, func))
 end
 local function createTimer(seconds, func)
 	table.insert(dsl.quillforge.cloner.timers, tempTimer(seconds, func))
 end
-local function createHandler(eventName, func)
-	table.insert(dsl.quillforge.cloner.eventhandlers, registerAnonymousEventHandler(eventName, func))
+
+if dsl.quillforge.cloner.stopHandler ~= nil then
+	killAnonymousEventHandler(dsl.quillforge.cloner.stopHandler)
 end
 
-local function killTempTriggers()
-	for _, triggerId in pairs(dsl.quillforge.cloner.tempTriggers) do
-		killTrigger(triggerId)
-	end
-  dsl.quillforge.cloner.tempTriggers = {}
-end
-
-local function killEventHandlers()
-	for _, handlerId in pairs(dsl.quillforge.cloner.eventhandlers) do
-		killAnonymousEventHandler(handlerId)
-	end
-  dsl.quillforge.cloner.eventhandlers = {}
-end
-
-local function killTimers()
-	for _, timerId in pairs(dsl.quillforge.cloner.timers) do
-		killTimer(timerId)
-	end
-  dsl.quillforge.cloner.timers = {}
-end
-
-local function onStop()
-	if dsl.quillforge.cloner.names ~= nil then
-		dsl.functions.echoMessage("Book duplication off")
-	end
-	killTempTriggers()
-	killEventHandlers()
-	killTimers()
-	--dsl.quillforge.cloner.names = nil
-	--dsl.quillforge.cloner.page = nil
-end
+dsl.quillforge.cloner.stopHandler = registerAnonymousEventHandler(
+  "dsl.quillforge.stop", killResources)
 
 local function sortedKeys(query, sortFunction)
 	local keys, len = {}, 0
@@ -2109,78 +2084,179 @@ local function replaceColorCodes(line)
 	line = string.gsub(line, "&lt;95,95,175:0,0,0&gt;", "{u")
 	line = string.gsub(line, "&lt;r&gt;&lt;192,192,192:0,0,0&gt;", "{x")
 	line = string.gsub(line, "&lt;192,192,192:0,0,0&gt;", "{x")
+	line = string.gsub(line, "&lt;r&gt;&lt;197,197,197:0,0,0&gt;", "{x")
+	line = string.gsub(line, "&lt;197,197,197:0,0,0&gt;", "{x")
 	line = string.gsub(line, "&lt;r&gt;", "{x")
 	line = string.gsub(line, "~", "{-")
 	return line
 end
 
-local function readNextPage()
-	send("read '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.numberOfPages)
+local function findNextPage()
+  dsl.quillforge.cloner.foundEmptyPage = false
+	send("read '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.page)
+  send("dip", false)
+end
+
+local function moveToNextPageAndRead()
+  dsl.quillforge.cloner.page = dsl.quillforge.cloner.page + 1
+  
+  if dsl.quillforge.cloner.page &lt;= dsl.quillforge.cloner.maxPage then
+    dsl.quillforge.cloner.readNextPage()
+  else
+    dsl.quillforge.cloner.readingpages = false
+    display(dsl.quillforge.cloner.pages)
+  end
+end
+
+function dsl.quillforge.cloner.readNextPage()
+  local page = nil
+  for _, pageDetails in pairs(dsl.quillforge.cloner.pages) do
+    if pageDetails.pageNumber == dsl.quillforge.cloner.page then
+      page = pageDetails
+    end
+  end
+  
+  if not page.empty then
+    dsl.quillforge.helpers.echoMessage("Reading page " ..dsl.quillforge.cloner.page)
+    send("dip '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.inkType .."'")
+    	send("write '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.page)
+    	send(".s")
+    	send("@")
+    send("dip", false)
+  else
+    moveToNextPageAndRead()
+  end
 end
 
 local function setTriggers()
-	createTempRegexTrigger("^(?&lt;linenumber&gt;[0-9]{3})&gt;\\s(?&lt;line&gt;.*)$", function()
-		if dsl.quillforge.cloner.readingbook then
+	createRegexTrigger("^(?&lt;linenumber&gt;[0-9]{3})&gt;\\s(?&lt;line&gt;.*)$", function()
+		if dsl.quillforge.cloner.readingpages then
+      local page = nil
+      for _, pageDetails in pairs(dsl.quillforge.cloner.pages) do
+        if pageDetails.pageNumber == dsl.quillforge.cloner.page then
+          page = pageDetails
+        end
+      end
+      
 			local line = copy2decho()
+      echo("\n")
+      display(line)
+      
 			if matches.linenumber == "001" then
-				dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page] = {}
+				page.lines = {}
 			end
 
-			if dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page] ~= nil then
-				line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;192,192,192:0,0,0&gt;&gt; ", "")
-				line = string.gsub(line, "{", "{{")
-				line = replaceColorCodes(line)
+			if page ~= nil and page.lines ~= nil then
+        line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;192,192,192:0,0,0&gt;&gt; ", "")
+        line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;197,197,197:0,0,0&gt;&gt; ", "")
+        line = string.gsub(line, "{", "{{")
+        line = replaceColorCodes(line)
+        
 				if line == " {x" then
 					line = " "
 				end
+        
 				if string.sub(line, 1, 1) == "." then
 					line = " " .. line
 				end
-				dsl.quillforge.cloner.pages[dsl.quillforge.cloner.page][matches.linenumber] = line
+        
+				table.insert(page.lines, line)
 			end
 		end
 	end)
-	createTempRegexTrigger("^(.*) is here waiting to be read.$", function()
-		if dsl.quillforge.cloner.readingbook then
-			local line = copy2decho()
-			line = string.gsub(line, " is here waiting to be read.", "")
-			line = replaceColorCodes(line)
-			dsl.quillforge.cloner.title = line
+  
+	createRegexTrigger("^You put (?&lt;title&gt;.*) in (.*)", function()
+    if dsl.quillforge.cloner.readingtitle then
+      dsl.quillforge.cloner.readingtitle = false
+      local line = copy2decho() 
+      line = line:gsub("^&lt;[^&gt;]+&gt;You put ", "")
+      line = line:gsub("%(in inventory%)", "")
+      line = line:gsub(" in (.*)", "")
+  		  line = replaceColorCodes(line)
+      dsl.quillforge.cloner.title = line
+      dsl.quillforge.helpers.echoMessage("Found title \"&lt;reset&gt;" .. dsl.quillforge.helpers.replaceColorCodes(dsl.quillforge.cloner.title) .."&lt;green&gt;\"")
+      send("get '" ..dsl.quillforge.cloner.names .."' '" .. dsl.quillforge.config.container .."'")
+      
+      if dsl.quillforge.cloner.isBook then
+        dsl.quillforge.helpers.echoMessage("Determining number of pages to clone")
+        dsl.quillforge.cloner.findingpages = true
+        dsl.quillforge.cloner.page = 0
+        findNextPage()
+      else
+        dsl.quillforge.helpers.echoMessage("Reading document")
+      end
+    end
+	end)
+  
+	createTrigger("That page seems to be blank.", function()
+		if dsl.quillforge.cloner.findingpages then
+      dsl.quillforge.cloner.foundEmptyPage = true
 		end
 	end)
-	createTempTrigger("That page seems to be blank.", function()
-		if dsl.quillforge.cloner.readingbook and dsl.quillforge.cloner.numberOfPages &gt; 1 then
-			dsl.quillforge.cloner.numberOfPages = dsl.quillforge.cloner.numberOfPages - 1
-			readNextPage()
-		end
-	end)
-	createTempTrigger("I see no quill here.", function()
-		onStop()
+  
+  createTrigger("Dip what in what?", function()  
+    if dsl.quillforge.cloner.findingpages then
+      deleteLine()
+      local page = { 
+        pageNumber = dsl.quillforge.cloner.page,
+        empty = dsl.quillforge.cloner.foundEmptyPage
+      }
+      
+      if not dsl.quillforge.cloner.foundEmptyPage then
+        dsl.quillforge.cloner.maxPage = dsl.quillforge.cloner.page
+      end
+      
+      table.insert(dsl.quillforge.cloner.pages, page)
+      
+      dsl.quillforge.cloner.page = dsl.quillforge.cloner.page + 1
+      
+      if dsl.quillforge.cloner.page &lt;= dsl.quillforge.cloner.maxNumberOfPages then
+        findNextPage()
+      else
+        dsl.quillforge.cloner.findingpages = false
+        dsl.quillforge.helpers.echoMessage("Max number of pages to clone: " .. dsl.quillforge.cloner.maxPage)
+        dsl.quillforge.helpers.echoMessage("Beginning to read pages")
+        dsl.quillforge.cloner.page = 0
+        dsl.quillforge.cloner.readingpages = true
+        send("get '" ..dsl.quillforge.config.inkType .."' '" ..dsl.quillforge.config.container .."'")
+		    send("get '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.container .."'")
+        dsl.quillforge.cloner.readNextPage()
+      end
+    elseif dsl.quillforge.cloner.readingpages then
+      deleteLine()
+      moveToNextPageAndRead()
+    end
+  end)
+  
+	createTrigger("I see no quill here.", function()
+		killResources()
 		send("~")
 	end)
 end
 
-local function setEventHandlers()
-	createHandler("dsl.stop", onStop)
-end
+local function clone(alias, names, isBook, scriptOnly)
+  dsl.quillforge.helpers.echoMessage("Beginning to clone. Type &lt;cyan&gt;quill stop&lt;green&gt; to cancel cloning")
+	killResources()
 
-local function doDuplicateBook(scriptOnly)
-	killTempTriggers()
-	killEventHandlers()
-	killTimers()
-
-	dsl.quillforge.cloner.names = matches[2]
-	dsl.quillforge.cloner.numberOfPages = 50
-	dsl.quillforge.cloner.pages = {}
-	dsl.quillforge.cloner.page = 0
-	dsl.quillforge.cloner.title = nil
-	dsl.quillforge.cloner.readingbook = true
+  dsl.quillforge.cloner.names = names
+  dsl.quillforge.cloner.maxNumberOfPages = 40
+  dsl.quillforge.cloner.maxPage = 0
+  dsl.quillforge.cloner.pages = {}
+  dsl.quillforge.cloner.page = 0
+  dsl.quillforge.cloner.title = nil
+  dsl.quillforge.cloner.readingtitle = true
+  dsl.quillforge.cloner.findingpages = false
+  dsl.quillforge.cloner.readingpages = false
+  dsl.quillforge.cloner.isBook = isBook
 
 	setTriggers()
-	setEventHandlers()
 
-	send("look '" .. dsl.quillforge.cloner.names .. "'")
-	readNextPage()
+	dsl.quillforge.helpers.echoMessage("Reading title")
+  send("put '" ..dsl.quillforge.cloner.names .."' '" .. dsl.quillforge.config.container .."'")
+  
+  --killResources()
+  --[[
+	findNextPage()
 
 	createTimer(30, function()
 		dsl.functions.echoMessage("Number of pages: " .. dsl.quillforge.cloner.numberOfPages)
@@ -2293,30 +2369,28 @@ local function doDuplicateBook(scriptOnly)
 				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "})\n"
 				echo("\n")
 				echo(dsl.quillforge.cloner.bookscript)
-				onStop()
+				killResources()
 			end)
 		end)
 	end)
+  ]]--
 end
 
-function dsl.quillforge.cloner.init()
-	cleanup(false)
-
-	dsl.quillforge.cloner.uninstallHandler = registerAnonymousEventHandler("sysUninstallPackage", function(_, packageName)
-		if packageName == "dslscripts" then
-			cleanup(true)
-		end
-	end)
-
-	createAliasFunction("duplicatebook (.*)", function()
-		doDuplicateBook(false)
-	end)
-
-	createAliasFunction("duplicatebookscript (.*)", function()
-		doDuplicateBook(true)
-	end)
+function dsl.quillforge.cloner.cloneBookCreate(alias, names)
+  clone(alias, names, true, false)
 end
-</script>
+
+function dsl.quillforge.cloner.cloneBookScript(alias, names)
+  clone(alias, names, true, true)
+end
+
+function dsl.quillforge.cloner.cloneDocCreate(alias, names)
+  clone(alias, names, false, false)
+end
+
+function dsl.quillforge.cloner.cloneDocScript(alias, names)
+  clone(alias, names, false, true)
+end</script>
 				<eventHandlerList />
 			</Script>
 			<Script isActive="yes" isFolder="no">
@@ -2395,6 +2469,7 @@ local function getSearchBooksContainerTrigger()
 end
 
 function dsl.quillforge.searcher.searchBooks(container)
+  dsl.quillforge.helpers.echoMessage("Beginning to search. Type &lt;cyan&gt;quill stop&lt;green&gt; to cancel searching")
   dsl.quillforge.searcher.state.searchingContainer = true
   dsl.quillforge.searcher.state.searchContainer = container
   dsl.quillforge.searcher.state.searchBookCounts = {}
