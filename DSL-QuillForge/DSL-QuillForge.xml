@@ -188,6 +188,15 @@ dsl.quillforge.books["defaulttemplate"] = {
   
   -- The book's pages. Each page in this lua table is a list of strings
   -- representing each line or lines of the book.
+  -- Each page is a lua table consisting of a list of strings
+  -- followed by a trailing comma:
+  -- {
+  --   " ",
+  -- },
+  -- Each line of the pages will be a lua string followed by a comma: " ",
+  -- If double quotes are used within the line, the string can be created
+  -- with single quotes ' ', or the double quote can be escaped "\"",
+  -- If using backslashes in the line, they will need escape "\\",.
   pages = {
     {
       " ",
@@ -277,6 +286,10 @@ dsl.quillforge.docs["defaulttemplate"] = {
   
   -- The documents's lines as a lua table that is a list of strings
   -- representing each line in the document.
+  -- Each line will be a lua string followed by a comma: " ",
+  -- If double quotes are used within the line, the string can be created
+  -- with single quotes ' ', or the double quote can be escaped "\"",
+  -- If using backslashes in the line, they will need escape "\\",.
   lines = {
     " ",
   }
@@ -676,6 +689,15 @@ dsl.quillforge.books["]] .. alias .. [["] = {
   
   -- The book's pages. Each page in this lua table is a list of strings
   -- representing each line or lines of the book.
+  -- Each page is a lua table consisting of a list of strings
+  -- followed by a trailing comma:
+  -- {
+  --   " ",
+  -- },
+  -- Each line of the pages will be a lua string followed by a comma: " ",
+  -- If double quotes are used within the line, the string can be created
+  -- with single quotes ' ', or the double quote can be escaped "\"",
+  -- If using backslashes in the line, they will need escape "\\",.
   pages = {
     {
       " ",
@@ -758,6 +780,10 @@ dsl.quillforge.docs["]] .. alias .. [["] = {
   
   -- The documents's lines as a lua table that is a list of strings
   -- representing each line in the document.
+  -- Each line will be a lua string followed by a comma: " ",
+  -- If double quotes are used within the line, the string can be created
+  -- with single quotes ' ', or the double quote can be escaped "\"",
+  -- If using backslashes in the line, they will need escape "\\",.
   lines = {
     " ",
   }
@@ -956,7 +982,10 @@ function dsl.quillforge.helpdisplay.displayQuillTutorial()
   echo("    else in your Mudlet scripts. Change the alias from \"simpletemplate\" to an\n")
   echo("    alias of your choosing, and then update the names and title.\n")
   echo("    Remove the isTemplate setting by deleting the line.\n")
-  echo("    Save the script.\n")
+  echo("    Save the script. Alternatively, the following command can be run to copy the\n")
+  echo("    default template to your clipboard for you to paste the template into\n")
+  echo("    a new script\n")
+  cecho("    &lt;cyan&gt;quill create book &lt;alias&gt;&lt;reset&gt;\n")
   echo("\n")
   cecho("6.) Test the commands that will run when writing by running the following command,")
   echo("    replacing &lt;alias&gt; with the alias you used.\n")
