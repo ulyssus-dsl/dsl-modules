@@ -546,20 +546,12 @@ createAlias("quill stop", function()
   raiseEvent("dsl.quillforge.stop")
 end)
 
-createAlias("quill clone create book ([a-zA-Z0-9-_]+) (.*)", function()
-  dsl.quillforge.cloner.cloneBookCreate(matches[2], matches[3])
+createAlias("quill clone book ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneBook(matches[2], matches[3])
 end)
 
-createAlias("quill clone script book ([a-zA-Z0-9-_]+) (.*)", function()
-  dsl.quillforge.cloner.cloneBookScript(matches[2], matches[3])
-end)
-
-createAlias("quill clone create doc ([a-zA-Z0-9-_]+) (.*)", function()
-  dsl.quillforge.cloner.cloneDocCreate(matches[2], matches[3])
-end)
-
-createAlias("quill clone script doc ([a-zA-Z0-9-_]+) (.*)", function()
-  dsl.quillforge.cloner.cloneDocScript(matches[2], matches[3])
+createAlias("quill clone doc ([a-zA-Z0-9-_]+) (.*)", function()
+  dsl.quillforge.cloner.cloneDoc(matches[2], matches[3])
 end)</script>
 				<eventHandlerList />
 			</Script>
@@ -1081,6 +1073,18 @@ function dsl.quillforge.helpdisplay.displayCommands()
     "quill test rewrite doc &lt;alias&gt;",
     "This is used to test or dry run the commands that will be sent to rewrite a document for debugging purposes without actually sending the commands. The commands will be echoed to the screen only.",
     "quill test rewrite doc simpledemo"
+  )
+  
+  cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Cloning existing books and documents\n")
+  showCommandHelp(
+    "quill clone book &lt;alias&gt; &lt;booknames&gt;",
+    "This will take an existing book in your inventory and clone it, creating a script that you can use to make further copies of it. This will use ink to read each page in the editor and sac the ink at the end. The alias provided will be the new alias for your script, and the names will be the names set within the new script.",
+    "quill clone book simpledemo book poems"
+  )
+  showCommandHelp(
+    "quill clone doc &lt;alias&gt; &lt;docnames&gt;",
+    "This will take an existing document in your inventory and clone it, creating a script that you can use to make further copies of it. This will use ink to read the document in the editor and sac the ink at the end. The alias provided will be the new alias for your script, and the names will be the names set within the new script.",
+    "quill clone doc simpledemo parchment poems"
   )
   
   cecho("\n&lt;:black&gt;&lt;white&gt;&lt;b&gt;&lt;u&gt;Stopping a book or document command that is in progress\n")
@@ -2002,21 +2006,13 @@ end</script>
 dsl.quillforge = dsl.quillforge or {}
 dsl.quillforge.cloner = dsl.quillforge.cloner or {}
 dsl.quillforge.cloner.triggers = dsl.quillforge.cloner.triggers or {}
-dsl.quillforge.cloner.timers = dsl.quillforge.cloner.timers or {}
 
-local function killResources()
+local function killTriggers()
 	for _, triggerId in pairs(dsl.quillforge.cloner.triggers) do
 		killTrigger(triggerId)
 	end
   dsl.quillforge.cloner.triggers = {}
-
-	for _, timerId in pairs(dsl.quillforge.cloner.timers) do
-		killTimer(timerId)
-	end
-  dsl.quillforge.cloner.timers = {}
 end
-
-killResources()
 
 local function createTrigger(substring, func)
 	table.insert(dsl.quillforge.cloner.triggers, tempTrigger(substring, func))
@@ -2024,26 +2020,13 @@ end
 local function createRegexTrigger(regex, func)
 	table.insert(dsl.quillforge.cloner.triggers, tempRegexTrigger(regex, func))
 end
-local function createTimer(seconds, func)
-	table.insert(dsl.quillforge.cloner.timers, tempTimer(seconds, func))
-end
 
 if dsl.quillforge.cloner.stopHandler ~= nil then
 	killAnonymousEventHandler(dsl.quillforge.cloner.stopHandler)
 end
 
 dsl.quillforge.cloner.stopHandler = registerAnonymousEventHandler(
-  "dsl.quillforge.stop", killResources)
-
-local function sortedKeys(query, sortFunction)
-	local keys, len = {}, 0
-	for k, _ in pairs(query) do
-		len = len + 1
-		keys[len] = k
-	end
-	table.sort(keys, sortFunction)
-	return keys
-end
+  "dsl.quillforge.stop", killTriggers)
 
 local function replaceColorCodes(line)
 	line = string.gsub(line, "&lt;r&gt;&lt;128,0,0:0,0,0&gt;", "{r")
@@ -2091,6 +2074,66 @@ local function replaceColorCodes(line)
 	return line
 end
 
+local function saveScript()
+  local title = string.gsub(dsl.quillforge.cloner.title, '"', '\\"')
+	dsl.quillforge.cloner.script = [[
+dsl = dsl or {}
+dsl.quillforge = dsl.quillforge or {}
+]]
+  if dsl.quillforge.cloner.isBook then
+    dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. [[
+dsl.quillforge.books = dsl.quillforge.books or {}
+
+dsl.quillforge.books["]] .. dsl.quillforge.cloner.alias .. [["] = {
+  title = "]] .. title .. [[",
+  names = "]] .. dsl.quillforge.cloner.names .. [[",
+  pages = {
+]]
+  else
+    dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. [[
+dsl.quillforge.docs = dsl.quillforge.docs or {}
+
+dsl.quillforge.docs["]] .. dsl.quillforge.cloner.alias .. [["] = {
+  title = "]] .. title .. [[",
+  names = "]] .. dsl.quillforge.cloner.names .. [[",
+  lines = {
+]]
+  end
+
+  if dsl.quillforge.cloner.isBook then
+  	 for _, page in pairs(dsl.quillforge.cloner.pages) do
+      if page.pageNumber &lt;= dsl.quillforge.cloner.maxPage and not page.isEmpty
+        and page.lines then
+      		dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. "    {\n"
+      		for _, line in pairs(page.lines) do
+    				local line = string.gsub(line, "\\", "\\\\")
+    				line = string.gsub(line, '"', '\\"')
+    				dsl.quillforge.cloner.script = dsl.quillforge.cloner.script
+    					.. '      "'
+    					.. line
+    					.. '",\n'
+      		end
+      		dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. "    },\n"
+      end
+    end
+  else
+    for _, line in pairs(dsl.quillforge.cloner.doclines) do
+			local line = string.gsub(line, "\\", "\\\\")
+			line = string.gsub(line, '"', '\\"')
+			dsl.quillforge.cloner.script = dsl.quillforge.cloner.script
+				.. '      "'
+				.. line
+				.. '",\n'
+  		end
+  end
+  
+	dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. "  }\n"
+	dsl.quillforge.cloner.script = dsl.quillforge.cloner.script .. "}\n"
+  setClipboardText(dsl.quillforge.cloner.script)
+  dsl.quillforge.helpers.echoMessage("Cloning complete. Script has been copied to clipboard.")
+  dsl.quillforge.helpers.echoMessage("Go to Scripts -&gt; Add Script -&gt; And then paste script in")
+end
+
 local function findNextPage()
   dsl.quillforge.cloner.foundEmptyPage = false
 	send("read '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.page)
@@ -2104,7 +2147,14 @@ local function moveToNextPageAndRead()
     dsl.quillforge.cloner.readNextPage()
   else
     dsl.quillforge.cloner.readingpages = false
-    display(dsl.quillforge.cloner.pages)
+    killTriggers()
+    
+		send("put '" .. dsl.quillforge.cloner.names .. "' '" ..dsl.quillforge.config.container .."'")
+		send("drop '" .. dsl.quillforge.config.inkType .. "'")
+		send("sac '" .. dsl.quillforge.config.inkType .. "'")
+    
+    dsl.quillforge.helpers.echoMessage("Finished reading pages")
+    saveScript()
   end
 end
 
@@ -2130,29 +2180,34 @@ end
 
 local function setTriggers()
 	createRegexTrigger("^(?&lt;linenumber&gt;[0-9]{3})&gt;\\s(?&lt;line&gt;.*)$", function()
-		if dsl.quillforge.cloner.readingpages then
+		if dsl.quillforge.cloner.readingpages or dsl.quillforge.cloner.readingdoc then
       local page = nil
-      for _, pageDetails in pairs(dsl.quillforge.cloner.pages) do
-        if pageDetails.pageNumber == dsl.quillforge.cloner.page then
-          page = pageDetails
+      
+      if dsl.quillforge.cloner.isBook then
+        for _, pageDetails in pairs(dsl.quillforge.cloner.pages) do
+          if pageDetails.pageNumber == dsl.quillforge.cloner.page then
+            page = pageDetails
+          end
         end
       end
       
 			local line = copy2decho()
-      echo("\n")
-      display(line)
       
 			if matches.linenumber == "001" then
-				page.lines = {}
+        if dsl.quillforge.cloner.isBook then
+				  page.lines = {}
+        else
+          dsl.quillforge.cloner.doclines = {}
+        end
 			end
 
-			if page ~= nil and page.lines ~= nil then
+			if not dsl.quillforge.cloner.isBook or (page ~= nil and page.lines ~= nil) then
         line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;192,192,192:0,0,0&gt;&gt; ", "")
         line = string.gsub(line, "&lt;0,255,255:0,0,0&gt;" .. matches.linenumber .. "&lt;r&gt;&lt;197,197,197:0,0,0&gt;&gt; ", "")
         line = string.gsub(line, "{", "{{")
         line = replaceColorCodes(line)
         
-				if line == " {x" then
+				if line == " {x" or line == "{x" then
 					line = " "
 				end
         
@@ -2160,7 +2215,11 @@ local function setTriggers()
 					line = " " .. line
 				end
         
-				table.insert(page.lines, line)
+        if dsl.quillforge.cloner.isBook then
+				  table.insert(page.lines, line)
+        else
+				  table.insert(dsl.quillforge.cloner.doclines, line)
+        end
 			end
 		end
 	end)
@@ -2184,6 +2243,12 @@ local function setTriggers()
         findNextPage()
       else
         dsl.quillforge.helpers.echoMessage("Reading document")
+        dsl.quillforge.cloner.readingdoc = true
+        send("dip '" ..dsl.quillforge.config.quill .."' '" ..dsl.quillforge.config.inkType .."'")
+        send("write '" .. dsl.quillforge.cloner.names .. "'")
+        send(".s")
+        send("@")
+        send("dip", false)
       end
     end
 	end)
@@ -2225,19 +2290,89 @@ local function setTriggers()
     elseif dsl.quillforge.cloner.readingpages then
       deleteLine()
       moveToNextPageAndRead()
+    elseif dsl.quillforge.cloner.readingdoc then
+      dsl.quillforge.cloner.readingdoc = false
+      killTriggers()
+      
+      send("put '" .. dsl.quillforge.cloner.names .. "' '" ..dsl.quillforge.config.container .."'")
+      send("drop '" .. dsl.quillforge.config.inkType .. "'")
+      send("sac '" .. dsl.quillforge.config.inkType .. "'")
+      
+      dsl.quillforge.helpers.echoMessage("Finished reading document")
+      saveScript()
     end
   end)
   
 	createTrigger("I see no quill here.", function()
-		killResources()
+		killTriggers()
 		send("~")
+    dsl.quillforge.helpers.echoError("Quill is missing")
 	end)
+  
+  createTrigger("You do not have that item.", function()
+		killTriggers()
+    
+    if dsl.quillforge.cloner.isBook then
+      dsl.quillforge.helpers.echoError("Book not found")
+    else
+      dsl.quillforge.helpers.echoError("Document not found")
+    end
+    
+		send("~")
+  end)
+  
+  
+  createTrigger("Write in what?", function()
+		killTriggers()
+		send("~")
+    dsl.quillforge.helpers.echoError("Book or document is missing")
+  end)
+  
+  createTrigger("You need something to write with.", function()
+		killTriggers()
+		send("~")
+    dsl.quillforge.helpers.echoError("Quill is missing")
+  end)
+  
+  createTrigger("In your dreams, or what?", function()
+		killTriggers()
+		send("~")
+    dsl.quillforge.helpers.echoError("Currently sleeping")
+  end)
+  
+  createRegexTrigger("(.*) is out of ink.", function()
+		killTriggers()
+		send("~")
+    dsl.quillforge.helpers.echoError("Quill is empty. Ink is missing.")
+  end)
+  
+  createRegexTrigger("I see no (.*) here.", function()
+    if matches[2] == dsl.quillforge.config.container then
+		  killTriggers()
+		  send("~")
+      dsl.quillforge.helpers.echoError("Container not found")
+    end
+  end)
+  
+  createTrigger("Invalid page number!", function()
+		killTriggers()
+		send("~")
+    dsl.quillforge.helpers.echoError("Unexpected Error 'Invalid page number!'")
+  end)
+  
+  createTrigger("That page seems to have been torn out.", function()
+		if dsl.quillforge.cloner.findingpages then
+      dsl.quillforge.cloner.foundEmptyPage = true
+		end
+  end)
+  
 end
 
-local function clone(alias, names, isBook, scriptOnly)
+local function clone(alias, names, isBook)
   dsl.quillforge.helpers.echoMessage("Beginning to clone. Type &lt;cyan&gt;quill stop&lt;green&gt; to cancel cloning")
-	killResources()
+	killTriggers()
 
+  dsl.quillforge.cloner.alias = alias
   dsl.quillforge.cloner.names = names
   dsl.quillforge.cloner.maxNumberOfPages = 40
   dsl.quillforge.cloner.maxPage = 0
@@ -2247,149 +2382,21 @@ local function clone(alias, names, isBook, scriptOnly)
   dsl.quillforge.cloner.readingtitle = true
   dsl.quillforge.cloner.findingpages = false
   dsl.quillforge.cloner.readingpages = false
+  dsl.quillforge.cloner.readingdoc = false
   dsl.quillforge.cloner.isBook = isBook
 
 	setTriggers()
 
 	dsl.quillforge.helpers.echoMessage("Reading title")
   send("put '" ..dsl.quillforge.cloner.names .."' '" .. dsl.quillforge.config.container .."'")
-  
-  --killResources()
-  --[[
-	findNextPage()
-
-	createTimer(30, function()
-		dsl.functions.echoMessage("Number of pages: " .. dsl.quillforge.cloner.numberOfPages)
-		send("get 'squid ink' pockets")
-		send("get quill pockets")
-		local waitTime = 0
-		for i = 1, dsl.quillforge.cloner.numberOfPages, 1 do
-			createTimer(waitTime, function()
-				dsl.quillforge.cloner.page = dsl.quillforge.cloner.page + 1
-				-- TODO: Figure out why this is going higher than last page
-				if dsl.quillforge.cloner.page &lt;= dsl.quillforge.cloner.numberOfPages then
-					send("dip quill 'squid ink'")
-					send("write '" .. dsl.quillforge.cloner.names .. "' page " .. dsl.quillforge.cloner.page)
-					send(".s")
-					send("@")
-				end
-			end)
-			waitTime = waitTime + 5
-		end
-
-		createTimer(waitTime + 5, function()
-			dsl.quillforge.cloner.readingbook = false
-			send("put '" .. dsl.quillforge.cloner.names .. "' pockets")
-			send("drop 'squid ink'")
-			send("sac 'squid ink'")
-
-			local writeWaitTime = 0
-			if not scriptOnly then
-				send("get 'squid ink' pockets")
-				local bookType = "thin book" -- Shokono
-				if #dsl.quillforge.cloner.pages &gt; 5 then
-					bookType = "small book" -- Shokono
-				end
-				if #dsl.quillforge.cloner.pages &gt; 15 then
-					bookType = "thick book"
-				end
-
-				send("get '" .. bookType .. "' pockets")
-				for page, lines in pairs(dsl.quillforge.cloner.pages) do
-					local keys = sortedKeys(lines)
-					createTimer(writeWaitTime, function()
-						dsl.functions.echoMessage(
-							"Starting to write page " .. page .. " of " .. dsl.quillforge.cloner.numberOfPages
-						)
-						send("dip quill 'squid ink'")
-						send("write '" .. bookType .. "' page " .. page)
-						local lineIndex = 1
-						for _, key in pairs(keys) do
-							if lineIndex &lt; #keys then
-								send(lines[key])
-							end
-							lineIndex = lineIndex + 1
-						end
-						send("@")
-					end)
-					createTimer(writeWaitTime + 2, function()
-						dsl.functions.echoMessage(
-							"Currently writing page " .. page .. " of " .. dsl.quillforge.cloner.numberOfPages
-						)
-					end)
-					local addTime = (#keys / 2)
-					if addTime &lt; 4 then
-						addTime = 6
-					end
-					writeWaitTime = writeWaitTime + addTime
-				end
-
-				createTimer(writeWaitTime + 2, function()
-					send("dip quill 'squid ink'")
-					send("write '" .. bookType .. "' title " .. dsl.quillforge.cloner.title)
-					send("drop 'squid ink'")
-					send("sac 'squid ink'")
-					send("put quill pockets")
-					dsl.functions.echoMessage("Finished duplicating book")
-				end)
-			end
-
-			createTimer(writeWaitTime + 4, function()
-				local title = string.gsub(dsl.quillforge.cloner.title, '"', '\\"')
-				local alias = string.gsub(dsl.quillforge.cloner.names, " ", "")
-				dsl.quillforge.cloner.bookscript = ""
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
-					.. 'raiseEvent("dsl.bookengine.registerbook",\n'
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "{\n"
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. '  alias = "' .. alias .. '",\n'
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
-					.. '  names = "'
-					.. dsl.quillforge.cloner.names
-					.. '",\n'
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. '  title = "' .. title .. '", \n'
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "  pages = {\n"
-				for page, lines in pairs(dsl.quillforge.cloner.pages) do
-					dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "    {\n"
-					local keys = sortedKeys(lines)
-					local lineIndex = 1
-					for _, key in pairs(keys) do
-						if lineIndex &lt; #keys then
-							local line = string.gsub(line, "\\", "\\\\")
-							line = string.gsub(lines[key], '"', '\\"')
-							dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript
-								.. '      "'
-								.. line
-								.. '",\n'
-						end
-						lineIndex = lineIndex + 1
-					end
-					dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "    },\n"
-				end
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "  }\n"
-				dsl.quillforge.cloner.bookscript = dsl.quillforge.cloner.bookscript .. "})\n"
-				echo("\n")
-				echo(dsl.quillforge.cloner.bookscript)
-				killResources()
-			end)
-		end)
-	end)
-  ]]--
 end
 
-function dsl.quillforge.cloner.cloneBookCreate(alias, names)
-  clone(alias, names, true, false)
+function dsl.quillforge.cloner.cloneBook(alias, names)
+  clone(alias, names, true)
 end
 
-function dsl.quillforge.cloner.cloneBookScript(alias, names)
-  clone(alias, names, true, true)
-end
-
-function dsl.quillforge.cloner.cloneDocCreate(alias, names)
-  clone(alias, names, false, false)
-end
-
-function dsl.quillforge.cloner.cloneDocScript(alias, names)
-  clone(alias, names, false, true)
+function dsl.quillforge.cloner.cloneDoc(alias, names)
+  clone(alias, names, false)
 end</script>
 				<eventHandlerList />
 			</Script>
