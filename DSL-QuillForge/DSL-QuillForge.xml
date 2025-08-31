@@ -1988,7 +1988,7 @@ local function write(book, rewrite, echoOnly, viewOnly, pageNumberOnly, numberOf
       end
       
       sendLine("@", echoOnly)
-      send("dip", true)
+      send("dip", false)
       
       dsl.quillforge.helpers.echoMessage("Total characters: " .. totalCharacters)
     end
