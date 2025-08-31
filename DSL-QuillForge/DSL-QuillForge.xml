@@ -563,6 +563,7 @@ dsl.quillforge = dsl.quillforge or {}
 dsl.quillforge.templates = dsl.quillforge.templates or {}
 
 local function createTemplateScript(scriptName, scriptContents)
+  --[[
   if exists(scriptName, "script") == 0 then
 		local scriptID = permScript(scriptName, "", scriptContents)
 
@@ -575,6 +576,11 @@ local function createTemplateScript(scriptName, scriptContents)
 	else
 		dsl.quillforge.helpers.echoError("Script \"" .. scriptName .."\" already exists")
 	end
+  ]]--
+  
+  setClipboardText(scriptContents)
+  dsl.quillforge.helpers.echoMessage("Template script has been copied to clipboard.")
+  dsl.quillforge.helpers.echoMessage("Go to Scripts -&gt; Add Script -&gt; And then paste script in")
 end
 
 function dsl.quillforge.templates.createBook(alias)
@@ -985,19 +991,17 @@ function dsl.quillforge.helpdisplay.displayCommands()
   echo("and keeping it installed and synced to a secure location such\n")
   echo("as dropbox or a git repository.\n\n")
   echo("Alternatively, you can use one of the following commands which will\n")
-  echo("create a script for you, but have been known to cause issues in\n")
-  echo("Mudlet with scripts failing to update/save/delete initially until\n")
-  echo("Mudlet is restarted once. Recommended to restart before updating\n")
-  echo("the scripts after creating if using these commands.\n")
+  echo("copy the default template to your clipboard in which you can then\n")
+  echo("paste into a new script to begin.\n")
   
   showCommandHelp(
     "quill create book &lt;alias&gt;",
-    "This will create a new script titled \"Book - &lt;alias&gt;\" that can be updated or moved as needed. The script will contain the configuration for a new book with one page and a single line. Book scripts can also be created manually or copy/pasted from existing books.",
+    "This will copy the default book script to your clipboard to be pasted into a new script. The script will contain the configuration for a new book with one page and a single line. Book scripts can also be created manually or copy/pasted from existing books.",
     "quill create book journal"
   )
   showCommandHelp(
     "quill create doc &lt;alias&gt;",
-    "This will create a new script titled \"Document - &lt;alias&gt;\" that can be updated or moved as needed. The script will contain the configuration for a new document with a single line. Document scripts can also be created manually or copy/pasted from existing documents.",
+    "This will copy the default doc script to your clipboard to be pasted into a new script. The script will contain the configuration for a new document with a single line. Document scripts can also be created manually or copy/pasted from existing documents.",
     "quill create doc letter"
   )
   
