@@ -11,17 +11,12 @@
 			<packageName></packageName>
 			<script>-- List of your characters that can cast regenerate
 local characterList = {
-  "Ulyssus"
+  "Ulyssus",
 }
 
 -- List of characters to skip
 local skipList = {
   "Rhaxx",
-  --"Blinx",
-  --"Donimas",
-  --"Brockner",
-  --"Abraxas",
-  --"Imshael",
 }
 
 -- Default setting for enabled
@@ -44,13 +39,13 @@ local TICK_BUFFER_SECONDS = 5
 local LOOK_MINUTES = 5
 
 -- Echo out additional info on what is happening.
-local INFO_ENABLED = true
+local INFO_ENABLED = false
 
 -- Echo out debug information.
 -- This will show all hidden commands sent and lines deleted.
 -- Will also show additional info about what is happening internally
 -- with the auto-regen process.
-local DEBUG_ENABLED = true
+local DEBUG_ENABLED = false
 
 -- Conclave regen room, where auto-regen will be enabled
 local REGEN_ROOM = 'Conclave Common Room'
