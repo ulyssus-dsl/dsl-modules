@@ -808,7 +808,7 @@ end
 -- Setup only occurs if the logged in character is in
 -- the characterList.
 function dsl.autoregen.setupScript()
-  dsl.autoregen.info("Valid character " ..gmcp.login_data.name .. ". Setting up script resources")
+  dsl.autoregen.echo("Valid character " ..gmcp.login_data.name .. ". Setting up script resources")
   
   dsl.autoregen.createAlias("autoregen\\s?(.*)?", function()
     if matches[2] == "run" then
@@ -935,6 +935,12 @@ function dsl.autoregen.setupIfNeeded()
     dsl.autoregen.teardownScript()
     dsl.autoregen.setupScript()
     
+    if dsl.autoregen.state.regenEnabled then
+      dsl.autoregen.echo("Auto-Regen is currently enabled")
+    else
+      dsl.autoregen.echo("Auto-Regen is currently disabled")
+    end
+    
     -- Enable if currently in regen room
     if gmcp ~= nil and gmcp.room_data ~= nil
       and gmcp.room_data.room == REGEN_ROOM then
@@ -942,6 +948,10 @@ function dsl.autoregen.setupIfNeeded()
       dsl.autoregen.autoRegenOn()
     end 
   else
+    if gmcp ~= nil and gmcp.login_data ~= nil
+      and not characterSet[gmcp.login_data.name] then
+      dsl.autoregen.echo("Invalid character " ..gmcp.login_data.name .. ". Not setting up script resources")
+    end
     dsl.autoregen.teardownScript()
   end
 end
@@ -969,12 +979,6 @@ dsl.autoregen.loginDataEventHandler = registerAnonymousEventHandler(
   "gmcp.login_data", dsl.autoregen.setupIfNeeded)
   
 dsl.autoregen.echo("Version 1.0.0: Type &lt;cyan&gt;autoregen&lt;green&gt; to disable/enable, or &lt;cyan&gt;autoregen run&lt;green&gt; to force regens to run.")
-
-if dsl.autoregen.state.regenEnabled then
-  dsl.autoregen.echo("Auto-Regen is Enabled")
-else
-  dsl.autoregen.echo("Auto-Regen is Disabled")
-end
 
 if gmcp ~= nil and gmcp.login_data ~= nil then
   dsl.autoregen.setupIfNeeded()
