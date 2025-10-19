@@ -10,7 +10,7 @@ Verify gmcp is enabled on your characters by typing the command `gmcp` in DSL if
 
 ## Configuration
 
-Once the module has been installed, edit the configuration at the top of the module's script by clicking on "Scripts" in the Mudlet menu then clicking on the DSL-Auto-Regen -> DSl-Auto-Regen script. Add any Conclave characters that you wish to use the Auto-Regen module with by adding their names to the characterList. Additional configuration options can be added such as a list of characters to skip, the default option as to whether the module should be enabled or disabled when logging in, and options to enable INFO and DEBUG statements among other configuration options.
+Once the module has been installed, edit the configuration at the top of the module's script by clicking on "Scripts" in the Mudlet menu then clicking on the DSL-Auto-Regen -> DSl-Auto-Regen script. Add any Conclave characters that you wish to use the Auto-Regen module with by adding their names to the characterList. Additional configuration options can be added such as a list of characters to skip, the default option as to whether the module should be enabled or disabled when logging in, auto sleep functionality, and options to enable INFO and DEBUG statements among other configuration options.
 
 ## Usage
 
@@ -31,3 +31,4 @@ The Auto-Regen module offers the following features.
 * Hides the commands and spam related to linking to characters
 * Can force the process to run while in the Commons by typing `autoregen run` which will clear out the current state of all characters and will look at the characters in the room to attempt to regenerate anyone that is in need of it 
 * Casts regeneration a number of times based on the current health of characters
+* Can set AUTO_SLEEP = true to allow automatically sleeping before the tick and awaking on the tick when your mana is not fully recovered

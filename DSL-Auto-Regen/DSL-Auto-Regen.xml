@@ -22,6 +22,11 @@ local skipList = {
 -- Default setting for enabled
 local ENABLED_DEFAULT = true
 
+-- Automatically sleep before tick and then wake
+-- allowing mana to be recovered. This will sleep
+-- before the tick using the TICK_BUFFER_SECONDS
+local AUTO_SLEEP = false
+
 -- Number of seconds after detecting that a character is
 -- in excellent health before attempting to glance
 -- and regen them again
@@ -86,7 +91,8 @@ dsl.autoregen.state = dsl.autoregen.state or {
   waitingForTick = false,
   regenOnTick = false,
   lastRegenLook = os.time() + (LOOK_MINUTES * 60) + 1,
-  secondsUntilTick = TICK_SECONDS
+  secondsUntilTick = TICK_SECONDS,
+  autoSleeping = false
 }
 
 local characterSet = {}
@@ -468,11 +474,19 @@ function dsl.autoregen.setRegenChar(charToRegen, times)
   return true
 end
 
-function dsl.autoregen.lookAndRun()
-  dsl.autoregen.regenChars = {}
-  dsl.autoregen.excellentRegenChars = {}
+function dsl.autoregen.lookAndRun(clearCharacters, skipLook)
+
+  if clearCharacters ~= false then
+    dsl.autoregen.debug("Clearing our all regen character states")
+    dsl.autoregen.regenChars = {}
+    dsl.autoregen.excellentRegenChars = {}
+  end
+  
   dsl.autoregen.state.lastRegenLook = os.time()
-  dsl.autoregen.send("look")
+  
+  if skipLook ~= true then
+    dsl.autoregen.send("look")
+  end
       
   if dsl.autoregen.lookTimer ~= nil then
     killTimer(dsl.autoregen.lookTimer)
@@ -665,8 +679,7 @@ function dsl.autoregen.createTempResources()
   		dsl.autoregen.state.sleeping = false
       
       if dsl.autoregen.canDoRegenTasks() then
-        dsl.autoregen.state.lastRegenLook = os.time()
-        dsl.autoregen.doRegens()
+        dsl.autoregen.lookAndRun(false, true)
       end
   	 end)
   
@@ -706,9 +719,24 @@ function dsl.autoregen.createTempResources()
         killTimer(dsl.autoregen.tickTimer)
       end
       
+      if AUTO_SLEEP and dsl.autoregen.state.autoSleeping then
+        dsl.autoregen.debug("Auto waking")
+        dsl.autoregen.state.autoSleeping = false
+        dsl.autoregen.state.sleeping = false
+        dsl.autoregen.send("wake")
+      end
+      
       dsl.autoregen.tickTimer = tempTimer(1, function()
         dsl.autoregen.state.secondsUntilTick = dsl.autoregen.state.secondsUntilTick - 1
-      end)
+        
+        if AUTO_SLEEP and dsl.autoregen.state.secondsUntilTick == TICK_BUFFER_SECONDS
+          and gmcp.char_data.mana &lt; gmcp.char_data.max_mana then
+          dsl.autoregen.debug("Auto sleeping")
+          dsl.autoregen.send("sleep")
+          dsl.autoregen.state.sleeping = true
+          dsl.autoregen.state.autoSleeping = true
+        end
+      end, true)
       
       -- If waking up, no need to look at the room as we will already see it
       local woke = false
