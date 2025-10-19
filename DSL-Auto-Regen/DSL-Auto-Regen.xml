@@ -732,6 +732,15 @@ function dsl.autoregen.createTempResources()
         if AUTO_SLEEP and dsl.autoregen.state.secondsUntilTick == TICK_BUFFER_SECONDS
           and gmcp.char_data.mana &lt; gmcp.char_data.max_mana then
           dsl.autoregen.debug("Auto sleeping")
+          
+          if gmcp.char_data.is_riding then
+            dsl.autoregen.send("dismount")
+          end
+          
+          if gmcp.char_data.is_flying then
+            dsl.autoregen.send("land")
+          end
+          
           dsl.autoregen.send("sleep")
           dsl.autoregen.state.sleeping = true
           dsl.autoregen.state.autoSleeping = true
