@@ -630,7 +630,10 @@ function dsl.autoregen.createTempResources()
     "You establish a magic link with (The ghost of )?(?&lt;name&gt;[a-zA-Z-']*).",
     function()
       dsl.autoregen.regenInProcess()
-      dsl.autoregen.regenChars[matches.name].linked = true
+      
+      if dsl.autoregen.regenChars[matches.name] then
+        dsl.autoregen.regenChars[matches.name].linked = true
+      end
     end)
   
   dsl.autoregen.createTrigger(
