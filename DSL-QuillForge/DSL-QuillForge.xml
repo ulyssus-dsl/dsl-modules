@@ -11,7 +11,7 @@
 			<packageName></packageName>
 			<script>dsl = dsl or {}
 dsl.quillforge = dsl.quillforge or {}
-dsl.quillforge.config = dsl.quillforge.config or {
+dsl.quillforge.config = {
   -- Names of your container that will contain books, parchment, 
   -- quill, and ink
   container = "hoard",
@@ -3208,7 +3208,7 @@ dsl.quillforge = dsl.quillforge or {}
 dsl.quillforge.version = {
   Major = 1,
   Minor = 0,
-  Patch = 0,
+  Patch = 1,
 }</script>
 				<eventHandlerList />
 			</Script>
