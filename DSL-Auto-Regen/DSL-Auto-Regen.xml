@@ -770,9 +770,10 @@ function dsl.autoregen.createTempResources()
 end
 
 function dsl.autoregen.autoRegenOff()
+  dsl.autoregen.killTempResources()
+  
   if dsl.autoregen.state.regenOn then
     dsl.autoregen.regenChars = {}
-    dsl.autoregen.killTempResources()
     dsl.autoregen.state.regenInProcess = false
     dsl.autoregen.state.regenOn = false
     dsl.autoregen.info("Auto-Regen Off")
