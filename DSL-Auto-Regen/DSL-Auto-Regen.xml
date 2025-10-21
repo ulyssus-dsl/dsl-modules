@@ -431,6 +431,12 @@ function dsl.autoregen.doRegens()
 end
 
 function dsl.autoregen.setRegenChar(charToRegen, times)
+  
+  if charToRegen == "" or charToRegen == nil or charToRegen == " " then
+    dsl.autoregen.debug("Skipping - Empty")
+    return false
+  end
+  
   if charToRegen == "Someone" then
     dsl.autoregen.debug("Skipping Someone")
     return false
@@ -603,25 +609,7 @@ function dsl.autoregen.createTempResources()
     end)
 
   dsl.autoregen.createRegexTrigger(
-    "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is here", 
-    function()
-      dsl.autoregen.setRegenChar(matches.name)
-    end)
-
-  dsl.autoregen.createRegexTrigger(
-    "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is riding(.*)", 
-    function()
-      dsl.autoregen.setRegenChar(matches.name)
-    end)
-
-  dsl.autoregen.createRegexTrigger(
-    "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is resting(.*)", 
-    function()
-      dsl.autoregen.setRegenChar(matches.name)
-    end)
-
-  dsl.autoregen.createRegexTrigger(
-    "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is sleeping (.*)", 
+    "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sleeping)(.*)", 
     function()
       dsl.autoregen.setRegenChar(matches.name)
     end)
