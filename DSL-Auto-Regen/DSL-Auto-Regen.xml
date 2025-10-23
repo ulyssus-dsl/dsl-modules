@@ -77,6 +77,7 @@ dsl.autoregen.tickTimer = dsl.autoregen.tickTimer or nil
 dsl.autoregen.regenChars = dsl.autoregen.regenChars or {}
 dsl.autoregen.excellentRegenChars = dsl.autoregen.excellentRegenChars or {}
 dsl.autoregen.notLinkedChars = dsl.autoregen.notLinkedChars or {}
+dsl.autoregen.linkableChars = dsl.autoregen.linkableChars or {}
 dsl.autoregen.aliases = dsl.autoregen.aliases or {}
 dsl.autoregen.regenTriggers = dsl.autoregen.regenTriggers or {}
 dsl.autoregen.linkTimer = dsl.autoregen.linkTimer or nil
@@ -391,7 +392,7 @@ function dsl.autoregen.doRegens()
         if val == nil or not val.linked or not val.times then
           dsl.autoregen.debug("Removing " ..name ..". Not linked or no regens needed.")
           
-          if val and not val.linked then
+          if val and not val.linked and not dsl.autoregen.linkableChars[name] then
             dsl.autoregen.notLinkedChars[name] = os.time()
           end
           
@@ -660,6 +661,7 @@ function dsl.autoregen.createTempResources(createAllResources)
             dsl.autoregen.regenChars[name].linked = true
           end
         end
+        dsl.autoregen.linkableChars[matches.name] = true
         dsl.autoregen.deleteLine()
       end)
     
@@ -671,6 +673,7 @@ function dsl.autoregen.createTempResources(createAllResources)
         if dsl.autoregen.regenChars[matches.name] then
           dsl.autoregen.regenChars[matches.name].linked = true
         end
+        dsl.autoregen.linkableChars[matches.name] = true
       end)
     
     dsl.autoregen.createTrigger(
