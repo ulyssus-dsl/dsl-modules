@@ -502,6 +502,7 @@ function dsl.autoregen.setRegenChar(charToRegen, times)
   end
   
   if dsl.autoregen.notLinkedChars[charToRegen] ~= nil
+    and dsl.autoregen.linkableChars[charToRegen] == nil
     and os.difftime(os.time(), dsl.autoregen.notLinkedChars[charToRegen]) &lt; (NOT_LINKED_COOLDOWN_SECONDS * 1) then
     dsl.autoregen.info("Skipping " ..charToRegen ..". Was recently detected as not being linked.")
     return false
