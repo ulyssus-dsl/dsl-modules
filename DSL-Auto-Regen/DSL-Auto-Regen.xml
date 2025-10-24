@@ -80,12 +80,11 @@ dsl.autoregen.notLinkedChars = dsl.autoregen.notLinkedChars or {}
 dsl.autoregen.linkableChars = dsl.autoregen.linkableChars or {}
 dsl.autoregen.aliases = dsl.autoregen.aliases or {}
 dsl.autoregen.regenTriggers = dsl.autoregen.regenTriggers or {}
-dsl.autoregen.linkTimer = dsl.autoregen.linkTimer or nil
-dsl.autoregen.doLinkTimer = dsl.autoregen.doLinkTimer or nil
 dsl.autoregen.regenTimer = dsl.autoregen.regenTimer or nil
 dsl.autoregen.autoRegenOnTimer = dsl.autoregen.autoRegenOnTimer or nil
 dsl.autoregen.regenWaitTimer = dsl.autoregen.regenWaitTimer or nil
-dsl.autoregen.lookTimer = dsl.autoregen.lookTimer or nil
+dsl.autoregen.lookTrigger = dsl.autoregen.lookTrigger or nil
+dsl.autoregen.doneTrigger = dsl.autoregen.doneTrigger or nil
 dsl.autoregen.gmcpCheckTimer = dsl.autoregen.gmcpCheckTimer or nil
 dsl.autoregen.glanceCharacterMissingTrigger = dsl.autoregen.glanceCharacterMissingTrigger or nil
 dsl.autoregen.linkCharacterMissingTrigger = dsl.autoregen.linkCharacterMissingTrigger or nil
@@ -212,7 +211,7 @@ function dsl.autoregen.endRegenProcess()
   dsl.autoregen.inProcessTimer = nil
   
   dsl.autoregen.state.regenInProcess = false
-  dsl.autoregen.info("Regen process ended")
+  dsl.autoregen.debug("Regen process ended")
 end
 
 function dsl.autoregen.regenInProcess()
@@ -236,16 +235,11 @@ function dsl.autoregen.killTempResources()
     killTrigger(triggerId) 
   end
   dsl.autoregen.regenTriggers = {}
-  
-  if dsl.autoregen.linkTimer then
-    killTimer(dsl.autoregen.linkTimer)
+    
+  if dsl.autoregen.doRegensContinueTrigger ~= nil then
+    killTrigger(dsl.autoregen.doRegensContinueTrigger)
   end
-  dsl.autoregen.linkTimer = nil
-  
-  if dsl.autoregen.doLinkTimer then
-    killTimer(dsl.autoregen.doLinkTimer)
-  end
-  dsl.autoregen.doLinkTimer = nil
+  dsl.autoregen.doRegensContinueTrigger = nil
   
   if dsl.autoregen.regenTimer ~= nil then
     killTimer(dsl.autoregen.regenTimer)
@@ -257,10 +251,15 @@ function dsl.autoregen.killTempResources()
   end
   dsl.autoregen.autoRegenOnTimer = nil
   
-  if dsl.autoregen.lookTimer ~= nil then
-    killTimer(dsl.autoregen.lookTimer)
+  if dsl.autoregen.lookTrigger ~= nil then
+    killTrigger(dsl.autoregen.lookTrigger)
   end
-  dsl.autoregen.lookTimer = nil
+  dsl.autoregen.lookTrigger = nil
+  
+  if dsl.autoregen.doneTrigger ~= nil then
+    killTrigger(dsl.autoregen.doneTrigger)
+  end
+  dsl.autoregen.doneTrigger = nil
   
   if dsl.autoregen.inProcessTimer ~= nil then
     killTimer(dsl.autoregen.inProcessTimer)
@@ -315,9 +314,15 @@ function dsl.autoregen.doRegens()
       killTimer(dsl.autoregen.regenWaitTimer)
     end
     
-    dsl.autoregen.regenWaitTimer = tempTimer(3, dsl.autoregen.doRegens)
+    dsl.autoregen.regenWaitTimer = tempTimer(1, dsl.autoregen.doRegens)
   else
-    dsl.autoregen.info("Regen process started")
+  
+    if dsl.autoregen.state.secondsUntilTick &lt;= TICK_BUFFER_SECONDS then
+      dsl.autoregen.debug("Nearing tick - skipping regen process")
+      return
+    end
+    
+    dsl.autoregen.debug("Regen process started")
     dsl.autoregen.regenInProcess()
     
     local regenCharCount = 0
@@ -366,18 +371,14 @@ function dsl.autoregen.doRegens()
    
     dsl.autoregen.send("link", false)
     
-    if dsl.autoregen.linkTimer then
-      killTimer(dsl.autoregen.linkTimer)
+    if dsl.autoregen.doRegensContinueTrigger ~= nil then
+      killTrigger(dsl.autoregen.doRegensContinueTrigger)
     end
     
-    if dsl.autoregen.doLinkTimer then
-      killTimer(dsl.autoregen.doLinkTimer)
-    end
-    
-    local linkWaitTime = 2
-    dsl.autoregen.debug("Waiting " ..linkWaitTime .." seconds for commands to finish.")
-    dsl.autoregen.regenTimer = tempTimer(linkWaitTime, function()
-      dsl.autoregen.debug("Waiting finished. Continuing regen process.")
+    dsl.autoregen.doRegensContinueTrigger = tempTrigger("Smoke what?", function()
+      killTrigger(dsl.autoregen.doRegensContinueTrigger)
+      dsl.autoregen.doRegensContinueTrigger = nil
+      dsl.autoregen.debug("Continuing regen process.")
       dsl.autoregen.regenInProcess()
       
       if dsl.autoregen.glanceCharacterMissingTrigger ~= nil then
@@ -404,7 +405,7 @@ function dsl.autoregen.doRegens()
       
       if dsl.autoregen.state.secondsUntilTick &gt; TICK_BUFFER_SECONDS then
         maxRegens = math.floor((dsl.autoregen.state.secondsUntilTick - TICK_BUFFER_SECONDS) / 4)
-        dsl.autoregen.debug("Max regens set to " ..tostring(maxRegens))
+        dsl.autoregen.debug(dsl.autoregen.state.secondsUntilTick .. " seconds until tick. Max regens set to " ..tostring(maxRegens))
       else
         dsl.autoregen.debug("Nearing tick - max regens set to 0")
       end
@@ -433,13 +434,30 @@ function dsl.autoregen.doRegens()
         end
         
         if didRegens then
-          dsl.autoregen.doRegens()
+          if dsl.autoregen.doneTrigger ~= nil then
+            killTrigger(dsl.autoregen.doneTrigger)
+          end
+          
+          dsl.autoregen.doneTrigger = tempTrigger(
+            "Fill what?", 
+            function()
+              killTrigger(dsl.autoregen.doneTrigger)
+              dsl.autoregen.doneTrigger = nil
+              dsl.autoregen.endRegenProcess()
+              dsl.autoregen.doRegens()
+            end)
+            
+          dsl.autoregen.send("fill", false)
+        else
+          dsl.autoregen.endRegenProcess()
         end
       else
         dsl.autoregen.endRegenProcess()
         dsl.autoregen.state.regenOnTick = true
       end
     end)
+     
+    dsl.autoregen.send("smoke", false)
   end
 end
 
@@ -461,6 +479,11 @@ function dsl.autoregen.setRegenChar(charToRegen, times)
   
   if skipSet[charToRegen] then
     dsl.autoregen.info("Skipping " ..charToRegen)
+    return false
+  end
+  
+  if dsl.autoregen.regenChars[charToRegen] ~= nil and times == nil then
+    dsl.autoregen.info("Skipping " ..charToRegen ..". Already added.")
     return false
   end
   
@@ -514,11 +537,19 @@ function dsl.autoregen.lookAndRun(clearCharacters, skipLook)
     dsl.autoregen.send("look")
   end
       
-  if dsl.autoregen.lookTimer ~= nil then
-    killTimer(dsl.autoregen.lookTimer)
+  if dsl.autoregen.lookTrigger ~= nil then
+    killTrigger(dsl.autoregen.lookTrigger)
   end
   
-  dsl.autoregen.lookTimer = tempTimer(2, dsl.autoregen.doRegens)
+  dsl.autoregen.lookTrigger = tempTrigger(
+    "Fill what?", 
+    function()
+      killTrigger(dsl.autoregen.lookTrigger)
+      dsl.autoregen.lookTrigger = nil
+      dsl.autoregen.doRegens()
+    end)
+    
+  dsl.autoregen.send("fill", false)
 end
 
 -- Temporary triggers and handlers that will only be created
@@ -684,6 +715,18 @@ function dsl.autoregen.createTempResources(createAllResources)
       
     dsl.autoregen.createTrigger(
       "You cannot link outside of the pkill range",
+      function()
+        dsl.autoregen.deleteLine()
+      end)
+      
+    dsl.autoregen.createTrigger(
+      "Smoke what?",
+      function()
+        dsl.autoregen.deleteLine()
+      end)
+      
+    dsl.autoregen.createTrigger(
+      "Fill what?",
       function()
         dsl.autoregen.deleteLine()
       end)
