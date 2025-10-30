@@ -48,7 +48,7 @@ local NOT_LINKED_COOLDOWN_SECONDS = 600
 -- time to sleep etc. Number of regens to be casted will be
 -- kept above this number so casting is not happening this many seconds
 -- before the tick
-local TICK_BUFFER_SECONDS = 3
+local TICK_BUFFER_SECONDS = 4
 
 -- If for some reason the regen process gets into a state
 -- where it believes we are still regenning a character
@@ -56,9 +56,6 @@ local TICK_BUFFER_SECONDS = 3
 -- time we began a regen on a character has exceeded this many
 -- seconds
 local REGEN_RESET_SECONDS = 15
-
--- Echo out additional info on what is happening.
-local INFO_ENABLED = false
 
 -- Echo out debug information.
 -- This will show all hidden commands sent and lines deleted.
@@ -124,12 +121,6 @@ end
 
 function dsl.autoregen.echo(msg)
   cecho("\n&lt;white&gt;[&lt;cyan&gt;Auto-Regen&lt;white&gt;]&lt;green&gt; " ..msg .."&lt;reset&gt;\n")
-end
-
-function dsl.autoregen.info(msg)
-  if INFO_ENABLED then
-    cecho("\n&lt;white&gt;[&lt;cyan&gt;Auto-Regen&lt;white&gt;]&lt;cyan&gt; INFO: " ..msg .."&lt;reset&gt;\n")
-  end
 end
 
 function dsl.autoregen.debug(msg)
@@ -275,7 +266,6 @@ function dsl.autoregen.glanceCharacter(charToRegen)
   end
   
   if dsl.autoregen.notLinkedChars[charToRegen] ~= nil
-    and dsl.autoregen.linkableChars[charToRegen] == nil
     and os.difftime(os.time(), dsl.autoregen.notLinkedChars[charToRegen]) &lt; (NOT_LINKED_COOLDOWN_SECONDS * 1) then
     dsl.autoregen.debug("Can't glance character - " ..charToRegen .." was recently detected as not being linked.")
     return
@@ -335,7 +325,7 @@ function dsl.autoregen.beginRegen(reglance)
     return 
   end
   
-  if dsl.autoregen.state.secondsUntilTick &lt;= TICK_BUFFER_SECONDS then 
+  if dsl.autoregen.state.secondsUntilTick &lt;= (TICK_BUFFER_SECONDS + 4) then 
     dsl.autoregen.debug("Begin Regen - Skipping, " ..dsl.autoregen.state.secondsUntilTick .." seconds until tick")
     return 
   end
@@ -366,7 +356,7 @@ function dsl.autoregen.beginRegen(reglance)
   if regenChar ~= nil then
     dsl.autoregen.state.regeningCharacter = regenChar
     dsl.autoregen.state.beginRegenTime = os.time()
-    dsl.autoregen.send("c regen " ..regenChar)
+    dsl.autoregen.send("cast 'regenerate' " ..regenChar)
   else
     dsl.autoregen.debug("Begin Regen - Skipping, no character to regen")
   end
@@ -438,12 +428,6 @@ function dsl.autoregen.createTempResources(createAllResources)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies) in.", 
-      function()
-        dsl.autoregen.glanceCharacter(matches.name)
-      end)
-      
-    dsl.autoregen.createRegexTrigger(
-      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) has entered the realm",
       function()
         dsl.autoregen.glanceCharacter(matches.name)
       end)
@@ -544,8 +528,11 @@ function dsl.autoregen.createTempResources(createAllResources)
     dsl.autoregen.createTrigger(
       "You cannot link outside of the pkill range",
       function()
-        dsl.autoregen.notLinkedChars[dsl.autoregen.state.regeningCharacter] = os.time()
-        dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        if dsl.autoregen.state.regeningCharacter then
+          dsl.autoregen.notLinkedChars[dsl.autoregen.state.regeningCharacter] = os.time()
+          dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        end
+        
         dsl.autoregen.clearRegenCharacterAndBegin()
         
         if HIDE_LINK_COMMANDS then
@@ -646,8 +633,18 @@ function dsl.autoregen.createTempResources(createAllResources)
           dsl.autoregen.debug("Auto waking")
           dsl.autoregen.state.autoSleeping = false
           dsl.autoregen.state.sleeping = false
-          woke = true
           dsl.autoregen.send("wake")
+        end
+        
+        -- On tick, reset any regen characters that had pending regens
+        -- and re-glance them to get their updated health condition
+        for name, val in pairs(dsl.autoregen.regenChars) do
+          if val ~= nil 
+            and val.times ~= nil 
+            and val.times &gt; 0 then
+            dsl.autoregen.regenChars[name].times = nil
+            dsl.autoregen.regenChars[name].needsGlance = true
+          end
         end
         
         if dsl.autoregen.canDoRegenTasks() then
@@ -665,7 +662,7 @@ function dsl.autoregen.autoRegenOff()
     dsl.autoregen.state.regenOn = false
   	dsl.autoregen.state.sleeping = false
     dsl.autoregen.clearCurrentRegenCharacter()
-    dsl.autoregen.info("Auto-Regen Off")
+    dsl.autoregen.debug("Auto-Regen Off")
   end
 end
 
@@ -690,7 +687,7 @@ function dsl.autoregen.autoRegenOn(delay)
           dsl.autoregen.state.regenOn = true
           dsl.autoregen.state.secondsUntilTick = TICK_SECONDS
           dsl.autoregen.clearCurrentRegenCharacter()
-          dsl.autoregen.info("Auto-Regen On")
+          dsl.autoregen.debug("Auto-Regen On")
           dsl.autoregen.beginRegen()
         end
       end
@@ -707,6 +704,14 @@ function dsl.autoregen.setupScript()
   dsl.autoregen.createAlias("autoregen\\s?(.*)?", function()
     if matches[2] == "run" then
       dsl.autoregen.lookAndRun()
+    elseif matches[2] == "debug" then
+      if DEBUG_ENABLED then
+        DEBUG_ENABLED = false
+        dsl.autoregen.echo("Debug mode disabled")
+      else
+        DEBUG_ENABLED = true
+        dsl.autoregen.echo("Debug mode enabled")
+      end
     else
       if dsl.autoregen.state.regenEnabled then
         dsl.autoregen.echo("Auto-Regen is Disabled")
@@ -838,9 +843,9 @@ function dsl.autoregen.setupIfNeeded()
     dsl.autoregen.setupScript()
     
     if dsl.autoregen.state.regenEnabled then
-      dsl.autoregen.echo("Auto-Regen is currently enabled")
+      dsl.autoregen.debug("Auto-Regen is currently enabled")
     else
-      dsl.autoregen.echo("Auto-Regen is currently disabled")
+      dsl.autoregen.debug("Auto-Regen is currently disabled")
     end
     
     -- Enable if currently in regen room
@@ -896,7 +901,10 @@ end
 dsl.autoregen.loginDataEventHandler = registerAnonymousEventHandler(
   "gmcp.login_data", dsl.autoregen.checkScore)
   
-dsl.autoregen.echo("Version 1.0.0: Type &lt;cyan&gt;autoregen&lt;green&gt; to disable/enable, or &lt;cyan&gt;autoregen run&lt;green&gt; to force regens to run.")
+dsl.autoregen.echo("Auto-Regen Version 1.0.0 Loaded"
+  .."\n&lt;white&gt;[&lt;cyan&gt;Auto-Regen&lt;white&gt;]&lt;green&gt; Type &lt;cyan&gt;autoregen&lt;green&gt; to disable/enable"
+  .."\n&lt;white&gt;[&lt;cyan&gt;Auto-Regen&lt;white&gt;]&lt;green&gt; Type &lt;cyan&gt;autoregen debug&lt;green&gt; to enable/disable debug mode"
+  .."\n&lt;white&gt;[&lt;cyan&gt;Auto-Regen&lt;white&gt;]&lt;green&gt; Type &lt;cyan&gt;autoregen run&lt;green&gt; to force regens to run. Generally not required.")
 
 if gmcp ~= nil and gmcp.login_data ~= nil then
   dsl.autoregen.checkScore()
