@@ -9,12 +9,7 @@
 		<Script isActive="yes" isFolder="no">
 			<name>DSL-Auto-Regen</name>
 			<packageName></packageName>
-			<script>-- List of your characters that can cast regenerate
-local characterList = {
-  "Ulyssus",
-}
-
--- List of characters to skip
+			<script>-- List of characters to skip
 local skipList = {
   "Rhaxx",
 }
@@ -26,6 +21,17 @@ local ENABLED_DEFAULT = true
 -- allowing mana to be recovered. This will sleep
 -- before the tick using the TICK_BUFFER_SECONDS
 local AUTO_SLEEP = true
+
+-- The mana percentage to auto sleep at
+-- when below this percentage
+local AUTO_SLEEP_PERCENT = 75
+
+-- When set to true, this will hide the commands
+-- for linking which happens whenever a character is
+-- glanced to verify they are still linked or to
+-- link if needed. This Will hide the link commands, 
+-- and the corresponding feedback from the game
+local HIDE_LINK_COMMANDS = true
 
 -- Number of seconds after detecting that a character is
 -- in excellent health before attempting to glance
@@ -42,12 +48,14 @@ local NOT_LINKED_COOLDOWN_SECONDS = 600
 -- time to sleep etc. Number of regens to be casted will be
 -- kept above this number so casting is not happening this many seconds
 -- before the tick
-local TICK_BUFFER_SECONDS = 5
+local TICK_BUFFER_SECONDS = 3
 
--- Number of minutes between looking at the current room.
--- This is used to make sure no characters that need to be regened
--- have been missed.
-local LOOK_MINUTES = 5
+-- If for some reason the regen process gets into a state
+-- where it believes we are still regenning a character
+-- this will override that and continue regenning if the last
+-- time we began a regen on a character has exceeded this many
+-- seconds
+local REGEN_RESET_SECONDS = 15
 
 -- Echo out additional info on what is happening.
 local INFO_ENABLED = false
@@ -72,41 +80,27 @@ dsl.autoregen.affectDataEventHandler = dsl.autoregen.affectDataEventHandler or n
 dsl.autoregen.addAffectEventHandler = dsl.autoregen.addAffectEventHandler or nil
 dsl.autoregen.removeAffectEventHandler = dsl.autoregen.removeAffectEventHandler or nil
 dsl.autoregen.loginDataEventHandler = dsl.autoregen.loginDataEventHandler or nil
-dsl.autoregen.inProcessTimer = dsl.autoregen.inProcessTimer or nil
+dsl.autoregen.classTrigger = dsl.autoregen.classTrigger or nil
 dsl.autoregen.tickTimer = dsl.autoregen.tickTimer or nil
 dsl.autoregen.regenChars = dsl.autoregen.regenChars or {}
 dsl.autoregen.excellentRegenChars = dsl.autoregen.excellentRegenChars or {}
 dsl.autoregen.notLinkedChars = dsl.autoregen.notLinkedChars or {}
-dsl.autoregen.linkableChars = dsl.autoregen.linkableChars or {}
 dsl.autoregen.aliases = dsl.autoregen.aliases or {}
 dsl.autoregen.regenTriggers = dsl.autoregen.regenTriggers or {}
-dsl.autoregen.regenTimer = dsl.autoregen.regenTimer or nil
 dsl.autoregen.autoRegenOnTimer = dsl.autoregen.autoRegenOnTimer or nil
-dsl.autoregen.regenWaitTimer = dsl.autoregen.regenWaitTimer or nil
-dsl.autoregen.lookTrigger = dsl.autoregen.lookTrigger or nil
-dsl.autoregen.doneTrigger = dsl.autoregen.doneTrigger or nil
 dsl.autoregen.gmcpCheckTimer = dsl.autoregen.gmcpCheckTimer or nil
-dsl.autoregen.glanceCharacterMissingTrigger = dsl.autoregen.glanceCharacterMissingTrigger or nil
-dsl.autoregen.linkCharacterMissingTrigger = dsl.autoregen.linkCharacterMissingTrigger or nil
 dsl.autoregen.state = dsl.autoregen.state or {
   regenEnabled = ENABLED_DEFAULT,
-  regenInProcess = false,
+  regeningCharacter = nil,
+  beginRegenTime = nil,
   regenOn = false,
   inRegenRoom = false,
   sleeping = false,
   isGhost = false,
-  waitingForTick = false,
-  regenOnTick = false,
-  lastRegenLook = os.time() + (LOOK_MINUTES * 60) + 1,
   secondsUntilTick = TICK_SECONDS,
-  autoSleeping = false
+  autoSleeping = false,
+  currentClass = nil
 }
-
-local characterSet = {}
-
-for _, v in ipairs(characterList) do
-  characterSet[v] = true
-end
 
 local skipSet = {}
 
@@ -150,7 +144,12 @@ function dsl.autoregen.deleteLine()
   dsl.autoregen.debug("Deleted line - " ..currentLine)
 end
 
-function dsl.autoregen.canDoRegenTasks()
+function dsl.autoregen.canDoRegenTasks(skipRegenOnCheck)
+  if not skipRegenOnCheck and not dsl.autoregen.state.regenOn then
+    dsl.autoregen.debug("Unable to do regens - regen not on")
+    return false
+  end
+  
   if not dsl.autoregen.state.regenEnabled then
     dsl.autoregen.debug("Unable to do regens - disabled")
     return false
@@ -166,8 +165,8 @@ function dsl.autoregen.canDoRegenTasks()
     return false
   end
   
-  if not characterSet[gmcp.login_data.name] then
-    dsl.autoregen.debug("Unable to do regens - invalid character")
+  if not dsl.autoregen.isValidClass() then
+    dsl.autoregen.debug("Unable to do regens - invalid class")
     return false
   end
   
@@ -204,30 +203,6 @@ function dsl.autoregen.canDoRegenTasks()
   return true
 end
 
-function dsl.autoregen.endRegenProcess()
-  if dsl.autoregen.inProcessTimer ~= nil then
-    killTimer(dsl.autoregen.inProcessTimer)
-  end
-  dsl.autoregen.inProcessTimer = nil
-  
-  dsl.autoregen.state.regenInProcess = false
-  dsl.autoregen.debug("Regen process ended")
-end
-
-function dsl.autoregen.regenInProcess()
-  local waittime = 4
-  
-  if dsl.autoregen.inProcessTimer then
-    killTimer(dsl.autoregen.inProcessTimer)
-  end
-  
-  dsl.autoregen.state.regenInProcess = true
-  
-  dsl.autoregen.inProcessTimer = tempTimer(waittime, function()
-    dsl.autoregen.endRegenProcess()
-  end)
-end
-
 function dsl.autoregen.killTempResources()
   dsl.autoregen.debug("Killing all temporary resources")
   
@@ -235,41 +210,11 @@ function dsl.autoregen.killTempResources()
     killTrigger(triggerId) 
   end
   dsl.autoregen.regenTriggers = {}
-    
-  if dsl.autoregen.doRegensContinueTrigger ~= nil then
-    killTrigger(dsl.autoregen.doRegensContinueTrigger)
-  end
-  dsl.autoregen.doRegensContinueTrigger = nil
-  
-  if dsl.autoregen.regenTimer ~= nil then
-    killTimer(dsl.autoregen.regenTimer)
-  end
-  dsl.autoregen.regenTimer = nil
   
   if dsl.autoregen.autoRegenOnTimer ~= nil then
     killTimer(dsl.autoregen.autoRegenOnTimer)
   end
   dsl.autoregen.autoRegenOnTimer = nil
-  
-  if dsl.autoregen.lookTrigger ~= nil then
-    killTrigger(dsl.autoregen.lookTrigger)
-  end
-  dsl.autoregen.lookTrigger = nil
-  
-  if dsl.autoregen.doneTrigger ~= nil then
-    killTrigger(dsl.autoregen.doneTrigger)
-  end
-  dsl.autoregen.doneTrigger = nil
-  
-  if dsl.autoregen.inProcessTimer ~= nil then
-    killTimer(dsl.autoregen.inProcessTimer)
-  end
-  dsl.autoregen.inProcessTimer = nil
-  
-  if dsl.autoregen.regenWaitTimer ~= nil then
-    killTimer(dsl.autoregen.regenWaitTimer)
-  end
-  dsl.autoregen.regenWaitTimer = nil
   
   if dsl.autoregen.tickTimer ~= nil then
     killTimer(dsl.autoregen.tickTimer)
@@ -280,16 +225,6 @@ function dsl.autoregen.killTempResources()
   	 killAnonymousEventHandler(handlerId)
   end
   dsl.autoregen.eventHandlers = {}
-   
-  if dsl.autoregen.glanceCharacterMissingTrigger ~= nil then
-    killTrigger(dsl.autoregen.glanceCharacterMissingTrigger)
-  end
-  dsl.autoregen.glanceCharacterMissingTrigger = nil
-  
-  if dsl.autoregen.linkCharacterMissingTrigger ~= nil then
-    killTrigger(dsl.autoregen.linkCharacterMissingTrigger)
-  end
-  dsl.autoregen.linkCharacterMissingTrigger = nil
 end
 
 function dsl.autoregen.createTrigger(substring, func) 
@@ -304,253 +239,162 @@ function dsl.autoregen.createAlias(alias, func)
 	dsl.autoregen.aliases[alias] = tempAlias("^" .. alias .. "$", func)
 end
 
-function dsl.autoregen.doRegens()
-  if not dsl.autoregen.canDoRegenTasks() then return end
-  
-  if dsl.autoregen.state.regenInProcess then
-    dsl.autoregen.debug("Regens in process - waiting")
-    
-    if dsl.autoregen.regenWaitTimer then
-      killTimer(dsl.autoregen.regenWaitTimer)
-    end
-    
-    dsl.autoregen.regenWaitTimer = tempTimer(1, dsl.autoregen.doRegens)
-  else
-  
-    if dsl.autoregen.state.secondsUntilTick &lt;= TICK_BUFFER_SECONDS then
-      dsl.autoregen.debug("Nearing tick - skipping regen process")
-      return
-    end
-    
-    dsl.autoregen.debug("Regen process started")
-    dsl.autoregen.regenInProcess()
-    
-    local regenCharCount = 0
-    
-    if dsl.autoregen.regenTimer then
-      killTimer(dsl.autoregen.regenTimer)
-    end
-    
-    for name, value in pairs(dsl.autoregen.regenChars) do
-      dsl.autoregen.regenChars[name].times = nil
-      regenCharCount = regenCharCount + 1
-    end
-    
-    if regenCharCount == 0 then
-      dsl.autoregen.debug("No regen characters. Skipping")
-      dsl.autoregen.endRegenProcess()
-      return
-    end
-    
-    if dsl.autoregen.glanceCharacterMissingTrigger ~= nil then
-      killTrigger(dsl.autoregen.glanceCharacterMissingTrigger)
-    end
-    
-    if dsl.autoregen.linkCharacterMissingTrigger ~= nil then
-      killTrigger(dsl.autoregen.linkCharacterMissingTrigger)
-    end
-    
-    dsl.autoregen.glanceCharacterMissingTrigger = tempTrigger(
-      "You don't see that individual.",
-      function()
-        dsl.autoregen.deleteLine()
-      end)
-    
-    dsl.autoregen.linkCharacterMissingTrigger = tempTrigger(
-      "They aren't here.",
-      function()
-        dsl.autoregen.deleteLine()
-      end)
-
-    for name, value in pairs(dsl.autoregen.regenChars) do
-      if dsl.autoregen.canDoRegenTasks() then
-        dsl.autoregen.send("glance " ..name, false)
-        dsl.autoregen.send("link " ..name, false)
-      end
-    end
-   
-    dsl.autoregen.send("link", false)
-    
-    if dsl.autoregen.doRegensContinueTrigger ~= nil then
-      killTrigger(dsl.autoregen.doRegensContinueTrigger)
-    end
-    
-    dsl.autoregen.doRegensContinueTrigger = tempTrigger("Smoke what?", function()
-      killTrigger(dsl.autoregen.doRegensContinueTrigger)
-      dsl.autoregen.doRegensContinueTrigger = nil
-      dsl.autoregen.debug("Continuing regen process.")
-      dsl.autoregen.regenInProcess()
-      
-      if dsl.autoregen.glanceCharacterMissingTrigger ~= nil then
-        killTrigger(dsl.autoregen.glanceCharacterMissingTrigger)
-      end
-      
-      if dsl.autoregen.linkCharacterMissingTrigger ~= nil then
-        killTrigger(dsl.autoregen.linkCharacterMissingTrigger)
-      end
-      
-      for name, val in pairs(dsl.autoregen.regenChars) do
-        if val == nil or not val.linked or not val.times then
-          dsl.autoregen.debug("Removing " ..name ..". Not linked or no regens needed.")
-          
-          if val and not val.linked and not dsl.autoregen.linkableChars[name] then
-            dsl.autoregen.notLinkedChars[name] = os.time()
-          end
-          
-          dsl.autoregen.regenChars[name] = nil
-        end
-      end
-      
-      local maxRegens = 0
-      
-      if dsl.autoregen.state.secondsUntilTick &gt; TICK_BUFFER_SECONDS then
-        maxRegens = math.floor((dsl.autoregen.state.secondsUntilTick - TICK_BUFFER_SECONDS) / 4)
-        dsl.autoregen.debug(dsl.autoregen.state.secondsUntilTick .. " seconds until tick. Max regens set to " ..tostring(maxRegens))
-      else
-        dsl.autoregen.debug("Nearing tick - max regens set to 0")
-      end
-      
-      maxManaRegens = math.floor(gmcp.char_data.mana / 50)
-      
-      if maxRegens &gt; maxManaRegens then
-        maxRegens = maxManaRegens
-        dsl.autoregen.debug("Max regens reduced to due mana - set to " ..tostring(maxRegens))
-      end
-      
-      if maxRegens &gt; 0 then
-        local didRegens = false
-        local regensDone = 0
-        
-        for name, val in pairs(dsl.autoregen.regenChars) do
-          if val ~= nil and val.linked and val.times then
-            for i = 1, val.times do
-              if regensDone &lt; maxRegens then
-                dsl.autoregen.send("c regen " ..name)
-                didRegens = true
-                regensDone = regensDone + 1
-              end
-            end
-          end
-        end
-        
-        if didRegens then
-          if dsl.autoregen.doneTrigger ~= nil then
-            killTrigger(dsl.autoregen.doneTrigger)
-          end
-          
-          dsl.autoregen.doneTrigger = tempTrigger(
-            "Fill what?", 
-            function()
-              killTrigger(dsl.autoregen.doneTrigger)
-              dsl.autoregen.doneTrigger = nil
-              dsl.autoregen.endRegenProcess()
-              dsl.autoregen.doRegens()
-            end)
-            
-          dsl.autoregen.send("fill", false)
-        else
-          dsl.autoregen.endRegenProcess()
-        end
-      else
-        dsl.autoregen.endRegenProcess()
-        dsl.autoregen.state.regenOnTick = true
-      end
-    end)
-     
-    dsl.autoregen.send("smoke", false)
-  end
-end
-
-function dsl.autoregen.setRegenChar(charToRegen, times)
-  
+function dsl.autoregen.glanceCharacter(charToRegen)
   if charToRegen == "" or charToRegen == nil or charToRegen == " " then
-    dsl.autoregen.debug("Skipping - Empty")
-    return false
+    dsl.autoregen.debug("Can't glance character - Empty")
+    return
   end
   
   if charToRegen == "Someone" then
-    dsl.autoregen.debug("Skipping Someone")
-    return false
+    dsl.autoregen.debug("Can't glance character - Someone")
+    return
   end
   
   if charToRegen == gmcp.login_data.name then
-    return false
+    dsl.autoregen.debug("Can't glance character " ..charToRegen)
+    return
   end
   
   if skipSet[charToRegen] then
-    dsl.autoregen.info("Skipping " ..charToRegen)
-    return false
+    dsl.autoregen.debug("Can't glance character - On skip list - " ..charToRegen)
+    return
   end
   
-  if dsl.autoregen.regenChars[charToRegen] ~= nil and times == nil then
-    dsl.autoregen.info("Skipping " ..charToRegen ..". Already added.")
-    return false
+  if dsl.autoregen.regenChars[charToRegen] ~= nil
+    and dsl.autoregen.regenChars[charToRegen].times ~= nil
+    and dsl.autoregen.regenChars[charToRegen].times &gt; 0 then
+    dsl.autoregen.debug("Can't glance character - " ..charToRegen .." already added to regen list. Beginning regen instead.")
+    dsl.autoregen.beginRegen()
+    return
   end
   
-  if not dsl.autoregen.canDoRegenTasks() then
-    return false
-  end
-  
-  -- If we are just adding a character to the list
-  -- and they were recently detected as being in excellent
-  -- health then skip adding them
-  if times == nil
-    and dsl.autoregen.excellentRegenChars[charToRegen] ~= nil
+  if dsl.autoregen.excellentRegenChars[charToRegen] ~= nil
     and os.difftime(os.time(), dsl.autoregen.excellentRegenChars[charToRegen]) &lt; (CHARACTER_COOLDOWN_SECONDS * 1) then
-    dsl.autoregen.info("Skipping " ..charToRegen ..". Was recently detected in excellent health.")
-    return false
+    dsl.autoregen.debug("Can't glance character - " ..charToRegen .." was recently detected in excellent health.")
+    return
   end
   
   if dsl.autoregen.notLinkedChars[charToRegen] ~= nil
     and dsl.autoregen.linkableChars[charToRegen] == nil
     and os.difftime(os.time(), dsl.autoregen.notLinkedChars[charToRegen]) &lt; (NOT_LINKED_COOLDOWN_SECONDS * 1) then
-    dsl.autoregen.info("Skipping " ..charToRegen ..". Was recently detected as not being linked.")
-    return false
+    dsl.autoregen.debug("Can't glance character - " ..charToRegen .." was recently detected as not being linked.")
+    return
   end
   
-  dsl.autoregen.excellentRegenChars[charToRegen] = nil
-  dsl.autoregen.info("Adding " ..charToRegen .." to regen list")
   
-  dsl.autoregen.regenChars[charToRegen] = {
-    times = times,
-    linked = false
-  }
-  
-  if times ~= nil then
-    dsl.autoregen.doRegens()
+  if dsl.autoregen.canDoRegenTasks() then
+    dsl.autoregen.send("glance " ..charToRegen)
+    dsl.autoregen.send("link " ..charToRegen, not HIDE_LINK_COMMANDS)
+  else
+    dsl.autoregen.debug("Can't glance character - Scheduling glance")
+    
+    if dsl.autoregen.regenChars[charToRegen] ~= nil then
+      dsl.autoregen.regenChars[charToRegen].needsGlance = true
+    else
+      dsl.autoregen.regenChars[charToRegen] = {
+        times = nil,
+        needsGlance = true
+      }
+    end
   end
-  
-  return true
 end
 
-function dsl.autoregen.lookAndRun(clearCharacters, skipLook)
+function dsl.autoregen.lookAndRun()
 
-  if clearCharacters ~= false then
-    dsl.autoregen.debug("Clearing our all regen character states")
-    dsl.autoregen.regenChars = {}
-    dsl.autoregen.excellentRegenChars = {}
-    dsl.autoregen.notLinkedChars = {}
-  end
+  dsl.autoregen.debug("Clearing out all regen character states")
+  dsl.autoregen.clearCurrentRegenCharacter()
+  dsl.autoregen.regenChars = {}
+  dsl.autoregen.excellentRegenChars = {}
+  dsl.autoregen.notLinkedChars = {}
   
-  dsl.autoregen.state.lastRegenLook = os.time()
-  
-  if skipLook ~= true then
+  if dsl.autoregen.canDoRegenTasks() then
     dsl.autoregen.send("look")
   end
-      
-  if dsl.autoregen.lookTrigger ~= nil then
-    killTrigger(dsl.autoregen.lookTrigger)
+end
+
+function dsl.autoregen.beginRegen(reglance)
+
+  if dsl.autoregen.state.beginRegenTime ~= nil
+    and os.difftime(os.time(), dsl.autoregen.state.beginRegenTime) &gt; REGEN_RESET_SECONDS then
+    dsl.autoregen.debug("Clearing regen character and begin regen time")
+    dsl.autoregen.clearCurrentRegenCharacter()
   end
   
-  dsl.autoregen.lookTrigger = tempTrigger(
-    "Fill what?", 
-    function()
-      killTrigger(dsl.autoregen.lookTrigger)
-      dsl.autoregen.lookTrigger = nil
-      dsl.autoregen.doRegens()
-    end)
-    
-  dsl.autoregen.send("fill", false)
+  if dsl.autoregen.state.regeningCharacter then 
+    dsl.autoregen.debug("Begin Regen - Skipping, already in progress")
+    return 
+  end
+  
+  if gmcp.char_data.mana &lt; 50 then 
+    dsl.autoregen.debug("Begin Regen - Skipping, mana &lt; 50")
+    return 
+  end
+  
+  if not dsl.autoregen.canDoRegenTasks() then 
+    dsl.autoregen.debug("Begin Regen - Skipping, can't do regen tasks")
+    return 
+  end
+  
+  if dsl.autoregen.state.secondsUntilTick &lt;= TICK_BUFFER_SECONDS then 
+    dsl.autoregen.debug("Begin Regen - Skipping, " ..dsl.autoregen.state.secondsUntilTick .." seconds until tick")
+    return 
+  end
+  
+  local regenChar = nil
+  local highestTimes = 0
+  
+  for name, val in pairs(dsl.autoregen.regenChars) do
+    if reglance or (val ~= nil and val.needsGlance) then
+      dsl.autoregen.regenChars[name] = nil
+      dsl.autoregen.send("glance " ..name)
+      
+      if val.needsGlance then
+        dsl.autoregen.send("link " ..name, not HIDE_LINK_COMMANDS)
+      end
+    end
+  
+    if not reglance
+      and val ~= nil 
+      and val.times ~= nil 
+      and val.times &gt; 0
+      and (regenChar == nil or highestTimes &lt; val.times) then
+      regenChar = name
+      highestTimes = val.times
+    end
+  end
+  
+  if regenChar ~= nil then
+    dsl.autoregen.state.regeningCharacter = regenChar
+    dsl.autoregen.state.beginRegenTime = os.time()
+    dsl.autoregen.send("c regen " ..regenChar)
+  else
+    dsl.autoregen.debug("Begin Regen - Skipping, no character to regen")
+  end
+end
+
+function dsl.autoregen.clearRegenCharacterAndBegin()
+  if dsl.autoregen.state.regeningCharacter then
+    dsl.autoregen.debug("Clearing regen character " ..dsl.autoregen.state.regeningCharacter)
+  end
+  
+  dsl.autoregen.clearCurrentRegenCharacter()
+  dsl.autoregen.beginRegen()
+end
+
+function dsl.autoregen.regenCharacter(charToRegen, times)
+  dsl.autoregen.excellentRegenChars[charToRegen] = nil
+  dsl.autoregen.debug("Adding " ..charToRegen .." to regen list for " ..times .." regens")
+  
+  dsl.autoregen.regenChars[charToRegen] = {
+    times = times
+  }
+  
+  dsl.autoregen.beginRegen()
+end
+
+function dsl.autoregen.clearCurrentRegenCharacter()
+  dsl.autoregen.state.regeningCharacter = nil
+  dsl.autoregen.state.beginRegenTime = nil
 end
 
 -- Temporary triggers and handlers that will only be created
@@ -562,18 +406,25 @@ function dsl.autoregen.createTempResources(createAllResources)
     
     dsl.autoregen.createRegexTrigger("(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?goes to sleep(.*)", 
     function()
-      -- Since they are sleeping, skip cooldown to check health again
       dsl.autoregen.excellentRegenChars[matches.name] = nil
-      
-      if dsl.autoregen.setRegenChar(matches.name) then
-        dsl.autoregen.doRegens()
-      end
+      dsl.autoregen.glanceCharacter(matches.name)
     end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies|leaves) (up|down|north|east|south|west|southwest|southeast)(.*)?", 
       function()
-        if matches.name ~= "Someone" then
+        if matches.name ~= "Someone"
+          and dsl.autoregen.regenChars[matches.name] ~= nil then
+          dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
+          dsl.autoregen.regenChars[matches.name] = nil
+        end
+      end)
+      
+    dsl.autoregen.createRegexTrigger(
+      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) steps through a gate and vanishes",
+      function()
+        if matches.name ~= "Someone"
+          and dsl.autoregen.regenChars[matches.name] ~= nil then
           dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
           dsl.autoregen.regenChars[matches.name] = nil
         end
@@ -582,191 +433,174 @@ function dsl.autoregen.createTempResources(createAllResources)
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has arrived, riding(.*)", 
       function()
-        if dsl.autoregen.setRegenChar(matches.name) then
-          dsl.autoregen.doRegens()
-        end
+        dsl.autoregen.glanceCharacter(matches.name)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies) in.", 
       function()
-        if dsl.autoregen.setRegenChar(matches.name) then
-          dsl.autoregen.doRegens()
-        end
+        dsl.autoregen.glanceCharacter(matches.name)
       end)
       
-    	dsl.autoregen.createRegexTrigger(
+    dsl.autoregen.createRegexTrigger(
+      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) has entered the realm",
+      function()
+        dsl.autoregen.glanceCharacter(matches.name)
+      end)
+      
+    dsl.autoregen.createRegexTrigger(
       "^You go to sleep(.*)", 
       function()
-      		dsl.autoregen.state.sleeping = true
-      	end)
+    		dsl.autoregen.state.sleeping = true
+        dsl.autoregen.clearCurrentRegenCharacter()
+    	end)
       
     	dsl.autoregen.createTrigger(
       "You wake and stand up", 
       function()
-    		dsl.autoregen.state.sleeping = false
-        
-        if dsl.autoregen.canDoRegenTasks() then
-          dsl.autoregen.lookAndRun(false, true)
+        if dsl.autoregen.state.sleeping then
+  		      dsl.autoregen.state.sleeping = false
         end
     	 end)
       
     	dsl.autoregen.createTrigger(
       "You stand up", 
       function()
-    		  dsl.autoregen.state.sleeping = false
-        
-        if dsl.autoregen.canDoRegenTasks() then
-          dsl.autoregen.state.lastRegenLook = os.time()
-          dsl.autoregen.doRegens()
-        end
+  		  dsl.autoregen.state.sleeping = false
+        dsl.autoregen.beginRegen()
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sleeping)(.*)", 
       function()
-        dsl.autoregen.setRegenChar(matches.name)
+        dsl.autoregen.glanceCharacter(matches.name)
       end)
   else
     dsl.autoregen.debug("Creating all temporary resources")
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has quite a few wounds.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 6)
+        dsl.autoregen.regenCharacter(matches.name, 6)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has some small wounds and bruises.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 4)
+        dsl.autoregen.regenCharacter(matches.name, 4)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has a few scratches.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 2)
+        dsl.autoregen.regenCharacter(matches.name, 2)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?is in awful condition.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 10)
+        dsl.autoregen.regenCharacter(matches.name, 10)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?looks pretty hurt.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 9)
+        dsl.autoregen.regenCharacter(matches.name, 9)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has some big nasty wounds and scratches.", 
       function()
-        dsl.autoregen.setRegenChar(matches.name, 8)
+        dsl.autoregen.regenCharacter(matches.name, 8)
       end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?is in excellent condition.", 
       function()
-        dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
-        dsl.autoregen.regenChars[matches.name] = nil
+        if dsl.autoregen.regenChars[matches.name] ~= nil then
+          dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
+          dsl.autoregen.regenChars[matches.name] = nil
+        else
+          dsl.autoregen.debug(matches.name .." is in excellent condition. Skipping.")
+        end
         dsl.autoregen.excellentRegenChars[matches.name] = os.time()
       end)
     
-    dsl.autoregen.createRegexTrigger(
-      "(.*) is currently linked with you.", 
-      function()
-        dsl.autoregen.deleteLine()
-      end)
-    
     dsl.autoregen.createTrigger(
-      "You have not linked to anyone.", 
+      "You establish a magic link with",
       function()
-        dsl.autoregen.deleteLine()
-      end)
-    
-    dsl.autoregen.createRegexTrigger(
-      "You are currently linked to (The ghost of )?(?&lt;name&gt;[a-zA-Z-']*).", 
-      function()
-        for name, _ in pairs(dsl.autoregen.regenChars) do
-          if name == matches.name then
-            dsl.autoregen.regenChars[name].linked = true
-          end
+        if HIDE_LINK_COMMANDS then
+          dsl.autoregen.deleteLine()
         end
-        dsl.autoregen.linkableChars[matches.name] = true
-        dsl.autoregen.deleteLine()
-      end)
-    
-    dsl.autoregen.createRegexTrigger(
-      "You establish a magic link with (The ghost of )?(?&lt;name&gt;[a-zA-Z-']*).",
-      function()
-        dsl.autoregen.regenInProcess()
-        
-        if dsl.autoregen.regenChars[matches.name] then
-          dsl.autoregen.regenChars[matches.name].linked = true
-        end
-        dsl.autoregen.linkableChars[matches.name] = true
       end)
     
     dsl.autoregen.createTrigger(
       "You are already linked with them.", 
       function()
-        dsl.autoregen.deleteLine()
+        if HIDE_LINK_COMMANDS then
+          dsl.autoregen.deleteLine()
+        end
       end)
       
     dsl.autoregen.createTrigger(
       "You cannot link outside of the pkill range",
       function()
-        dsl.autoregen.deleteLine()
-      end)
-      
-    dsl.autoregen.createTrigger(
-      "Smoke what?",
-      function()
-        dsl.autoregen.deleteLine()
-      end)
-      
-    dsl.autoregen.createTrigger(
-      "Fill what?",
-      function()
-        dsl.autoregen.deleteLine()
+        dsl.autoregen.notLinkedChars[dsl.autoregen.state.regeningCharacter] = os.time()
+        dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        dsl.autoregen.clearRegenCharacterAndBegin()
+        
+        if HIDE_LINK_COMMANDS then
+          dsl.autoregen.deleteLine()
+        end
       end)
     
     dsl.autoregen.createTrigger(
       "You must be linked to someone to regenerate them.", 
       function()
-        dsl.autoregen.send("~")
+        dsl.autoregen.notLinkedChars[dsl.autoregen.state.regeningCharacter] = os.time()
+        dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        dsl.autoregen.clearRegenCharacterAndBegin()
+        
+        if HIDE_LINK_COMMANDS then
+          dsl.autoregen.deleteLine()
+        end
+      end)
+      
+    dsl.autoregen.createTrigger(
+      "They are not here",
+      function()
+        dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        dsl.autoregen.clearRegenCharacterAndBegin()
       end)
       
     dsl.autoregen.createTrigger(
       "They are too far away",
       function()
-        dsl.autoregen.send("~")
-        dsl.autoregen.lookAndRun()
+        dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] = nil
+        dsl.autoregen.clearRegenCharacterAndBegin()
       end)
     
     dsl.autoregen.createTrigger(
       "You don't have enough mana.", 
       function()
-        dsl.autoregen.send("~")
-        dsl.autoregen.send("sleep cushion")
-        dsl.autoregen.state.sleeping = true
-        dsl.autoregen.state.waitingForTick = true
-      end)
-    
-    dsl.autoregen.createTrigger(
-      "You have not linked to anyone.", 
-      function()
-        dsl.autoregen.regenInProcess()
-        for name, _ in pairs(dsl.autoregen.regenChars) do
-          dsl.autoregen.regenChars[name].linked = false
-        end
+        dsl.autoregen.clearCurrentRegenCharacter()
       end)
     
     dsl.autoregen.createTrigger(
       "You channel your magic into life for", 
       function()
-        dsl.autoregen.regenInProcess()
+        if dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter] ~= nil then
+          local newTimes = dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter].times - 1
+          dsl.autoregen.debug("Setting regen times for " ..dsl.autoregen.state.regeningCharacter
+            .." to " ..newTimes)
+          dsl.autoregen.regenChars[dsl.autoregen.state.regeningCharacter].times = newTimes
+          
+          if newTimes &lt;= 0 then
+            dsl.autoregen.send("glance " ..dsl.autoregen.state.regeningCharacter)
+            dsl.autoregen.clearCurrentRegenCharacter()
+          else
+            dsl.autoregen.clearRegenCharacterAndBegin()
+          end
+        end
       end)
     
     dsl.autoregen.eventHandlers.tick = registerAnonymousEventHandler(
@@ -779,52 +613,45 @@ function dsl.autoregen.createTempResources(createAllResources)
           killTimer(dsl.autoregen.tickTimer)
         end
         
-        if AUTO_SLEEP and dsl.autoregen.state.autoSleeping then
-          dsl.autoregen.debug("Auto waking")
-          dsl.autoregen.state.autoSleeping = false
-          dsl.autoregen.state.sleeping = false
-          dsl.autoregen.send("wake")
-        end
-        
         dsl.autoregen.tickTimer = tempTimer(1, function()
           dsl.autoregen.state.secondsUntilTick = dsl.autoregen.state.secondsUntilTick - 1
           
-          if AUTO_SLEEP and dsl.autoregen.state.secondsUntilTick == TICK_BUFFER_SECONDS
-            and gmcp.char_data.mana &lt; gmcp.char_data.max_mana then
-            dsl.autoregen.debug("Auto sleeping")
+          if AUTO_SLEEP and dsl.autoregen.state.secondsUntilTick == TICK_BUFFER_SECONDS then
+            local manaPercent = math.floor((gmcp.char_data.mana / gmcp.char_data.max_mana) * 100)
             
-            if gmcp.char_data.is_riding then
-              dsl.autoregen.send("dismount")
+            if manaPercent &lt; AUTO_SLEEP_PERCENT then
+              dsl.autoregen.debug("Auto sleeping")
+              
+              if gmcp.char_data.is_riding then
+                dsl.autoregen.send("dismount")
+              end
+              
+              if gmcp.char_data.is_flying then
+                dsl.autoregen.send("land")
+              end
+              
+              dsl.autoregen.send("sleep")
+              dsl.autoregen.state.sleeping = true
+              dsl.autoregen.state.autoSleeping = true
+            else
+              dsl.autoregen.debug("Skipping auto sleeping - Mana percent is at " ..manaPercent .."%")
             end
-            
-            if gmcp.char_data.is_flying then
-              dsl.autoregen.send("land")
-            end
-            
-            dsl.autoregen.send("sleep")
-            dsl.autoregen.state.sleeping = true
-            dsl.autoregen.state.autoSleeping = true
           end
         end, true)
         
         -- If waking up, no need to look at the room as we will already see it
         local woke = false
         
-        if dsl.autoregen.state.sleeping and dsl.autoregen.state.waitingForTick then
-          dsl.autoregen.send("wake")
+        if AUTO_SLEEP and dsl.autoregen.state.autoSleeping then
+          dsl.autoregen.debug("Auto waking")
+          dsl.autoregen.state.autoSleeping = false
           dsl.autoregen.state.sleeping = false
           woke = true
+          dsl.autoregen.send("wake")
         end
         
         if dsl.autoregen.canDoRegenTasks() then
-          if not woke 
-            and os.difftime(os.time(), dsl.autoregen.state.lastRegenLook) &gt; (60 * LOOK_MINUTES) then
-            dsl.autoregen.debug("Looking at room to do regens")
-            dsl.autoregen.lookAndRun()
-          elseif dsl.autoregen.state.regenOnTick then
-            dsl.autoregen.state.regenOnTick = false
-            dsl.autoregen.doRegens()
-          end
+          dsl.autoregen.beginRegen(true)
         end
       end)
   end
@@ -835,13 +662,14 @@ function dsl.autoregen.autoRegenOff()
   
   if dsl.autoregen.state.regenOn then
     dsl.autoregen.regenChars = {}
-    dsl.autoregen.state.regenInProcess = false
     dsl.autoregen.state.regenOn = false
+  	dsl.autoregen.state.sleeping = false
+    dsl.autoregen.clearCurrentRegenCharacter()
     dsl.autoregen.info("Auto-Regen Off")
   end
 end
 
-function dsl.autoregen.autoRegenOn()
+function dsl.autoregen.autoRegenOn(delay)
   dsl.autoregen.killTempResources()
   dsl.autoregen.createTempResources(false)
   
@@ -850,16 +678,20 @@ function dsl.autoregen.autoRegenOn()
     killTimer(dsl.autoregen.autoRegenOnTimer)
   end
   
-  dsl.autoregen.autoRegenOnTimer = tempTimer(5, 
+  if delay == nil then
+    delay = 5
+  end
+  
+  dsl.autoregen.autoRegenOnTimer = tempTimer(delay, 
     function()
       if dsl.autoregen.state.inRegenRoom then
-        if dsl.autoregen.canDoRegenTasks() then
+        if dsl.autoregen.canDoRegenTasks(true) then
           dsl.autoregen.createTempResources(true)
           dsl.autoregen.state.regenOn = true
-          dsl.autoregen.state.regenInProcess = false
-          dsl.autoregen.state.lastRegenLook = os.time()
+          dsl.autoregen.state.secondsUntilTick = TICK_SECONDS
+          dsl.autoregen.clearCurrentRegenCharacter()
           dsl.autoregen.info("Auto-Regen On")
-          dsl.autoregen.doRegens()
+          dsl.autoregen.beginRegen()
         end
       end
     end)
@@ -867,10 +699,10 @@ end
 
 -- Setup the core aliases and event handlers required
 -- for the auto-regen script to function.
--- Setup only occurs if the logged in character is in
--- the characterList.
+-- Setup only occurs if the logged in character is
+-- a valid Conclave CSR class
 function dsl.autoregen.setupScript()
-  dsl.autoregen.echo("Valid character " ..gmcp.login_data.name .. ". Setting up script resources")
+  dsl.autoregen.echo("Valid class " ..dsl.autoregen.state.currentClass .. ". Setting up script resources")
   
   dsl.autoregen.createAlias("autoregen\\s?(.*)?", function()
     if matches[2] == "run" then
@@ -925,12 +757,12 @@ function dsl.autoregen.setupScript()
   dsl.autoregen.affectDataEventHandler = registerAnonymousEventHandler(
     "gmcp.affect_data", 
     function()
-    	for _, affect in pairs(gmcp.affect_data.affects) do
-    		if affect.n == "ghost" then
-          dsl.autoregen.debug("ghost affect is currently on")
-          dsl.autoregen.state.isGhost = true
-        end
-    	end
+      	for _, affect in pairs(gmcp.affect_data.affects) do
+      		if affect.n == "ghost" then
+            dsl.autoregen.debug("ghost affect is currently on")
+            dsl.autoregen.state.isGhost = true
+          end
+      	end
     end)
   
   if dsl.autoregen.addAffectEventHandler ~= nil then
@@ -964,7 +796,7 @@ function dsl.autoregen.teardownScript()
   dsl.autoregen.debug("Tearing down script resources")
   
   for _, aliasId in pairs(dsl.autoregen.aliases) do
-  	killAlias(aliasId)
+  	 killAlias(aliasId)
   end
   dsl.autoregen.aliases = {}
   
@@ -989,12 +821,20 @@ function dsl.autoregen.teardownScript()
   dsl.autoregen.removeAffectEventHandler = nil
 end
 
--- Use the login data to determine if we should setup this script
--- based on the characterList
+function dsl.autoregen.isValidClass()
+  return dsl.autoregen.state.currentClass == 'Transmuter'
+    or dsl.autoregen.state.currentClass == 'Invoker'
+    or dsl.autoregen.state.currentClass == 'Necromancer'
+    or dsl.autoregen.state.currentClass == 'Battlemage'
+end
+
+-- Setup the script if we have gmcp and a valid
+-- Conclave CSR class
 function dsl.autoregen.setupIfNeeded()
+  dsl.autoregen.teardownScript()
+  
   if gmcp ~= nil and gmcp.login_data ~= nil
-    and characterSet[gmcp.login_data.name] then
-    dsl.autoregen.teardownScript()
+    and dsl.autoregen.isValidClass() then
     dsl.autoregen.setupScript()
     
     if dsl.autoregen.state.regenEnabled then
@@ -1007,14 +847,11 @@ function dsl.autoregen.setupIfNeeded()
     if gmcp ~= nil and gmcp.room_data ~= nil
       and gmcp.room_data.room == REGEN_ROOM then
       dsl.autoregen.state.inRegenRoom = true
-      dsl.autoregen.autoRegenOn()
+      dsl.autoregen.autoRegenOn(0)
+      dsl.autoregen.lookAndRun()
     end 
   else
-    if gmcp ~= nil and gmcp.login_data ~= nil
-      and not characterSet[gmcp.login_data.name] then
-      dsl.autoregen.echo("Invalid character " ..gmcp.login_data.name .. ". Not setting up script resources")
-    end
-    dsl.autoregen.teardownScript()
+    dsl.autoregen.echo("Invalid class " ..dsl.autoregen.state.currentClass .. ". Not setting up script resources")
   end
 end
 
@@ -1033,17 +870,36 @@ function dsl.autoregen.checkForGmcp()
   end)
 end
 
+function dsl.autoregen.checkScore()
+  if dsl.autoregen.classTrigger ~= nil then
+    killTrigger(dsl.autoregen.classTrigger)
+  end
+  
+  dsl.autoregen.classTrigger = tempRegexTrigger(
+    "Class: (?&lt;class&gt;[a-zA-Z]+)",
+    function()
+      dsl.autoregen.debug("Detected class " ..matches.class)
+      dsl.autoregen.state.currentClass = matches.class
+      killTrigger(dsl.autoregen.classTrigger)
+      dsl.autoregen.setupIfNeeded()
+    end)
+    
+  dsl.autoregen.state.currentClass = nil
+  dsl.autoregen.echo("Checking current character's class")
+  dsl.autoregen.send("score")
+end
+
 if dsl.autoregen.loginDataEventHandler ~= nil then
 	 killAnonymousEventHandler(dsl.autoregen.loginDataEventHandler)
 end
 
 dsl.autoregen.loginDataEventHandler = registerAnonymousEventHandler(
-  "gmcp.login_data", dsl.autoregen.setupIfNeeded)
+  "gmcp.login_data", dsl.autoregen.checkScore)
   
 dsl.autoregen.echo("Version 1.0.0: Type &lt;cyan&gt;autoregen&lt;green&gt; to disable/enable, or &lt;cyan&gt;autoregen run&lt;green&gt; to force regens to run.")
 
 if gmcp ~= nil and gmcp.login_data ~= nil then
-  dsl.autoregen.setupIfNeeded()
+  dsl.autoregen.checkScore()
 else
   dsl.autoregen.checkForGmcp()
 end</script>
