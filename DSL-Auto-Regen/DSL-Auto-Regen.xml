@@ -419,6 +419,26 @@ function dsl.autoregen.createTempResources(createAllResources)
           dsl.autoregen.regenChars[matches.name] = nil
         end
       end)
+      
+    dsl.autoregen.createRegexTrigger(
+      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) disappears(.*)",
+      function()
+        if matches.name ~= "Someone"
+          and dsl.autoregen.regenChars[matches.name] ~= nil then
+          dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
+          dsl.autoregen.regenChars[matches.name] = nil
+        end
+      end)
+      
+    dsl.autoregen.createRegexTrigger(
+      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) steps into a shimmering gate.",
+      function()
+        if matches.name ~= "Someone"
+          and dsl.autoregen.regenChars[matches.name] ~= nil then
+          dsl.autoregen.debug("Removing " ..matches.name .." from regen list")
+          dsl.autoregen.regenChars[matches.name] = nil
+        end
+      end)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has arrived, riding(.*)", 
@@ -428,6 +448,12 @@ function dsl.autoregen.createTempResources(createAllResources)
     
     dsl.autoregen.createRegexTrigger(
       "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies) in.", 
+      function()
+        dsl.autoregen.glanceCharacter(matches.name)
+      end)
+    
+    dsl.autoregen.createRegexTrigger(
+      "(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) has arrived through a shimmering gate.", 
       function()
         dsl.autoregen.glanceCharacter(matches.name)
       end)
