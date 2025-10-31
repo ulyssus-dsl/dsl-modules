@@ -481,7 +481,7 @@ function dsl.autoregen.createTempResources(createAllResources)
       end)
     
     dsl.autoregen.createRegexTrigger(
-      "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sleeping)(.*)", 
+      "(\\(.*\\)\\s)?(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sleeping|sitting|standing)(.*)", 
       function()
         dsl.autoregen.glanceCharacter(matches.name)
       end)
