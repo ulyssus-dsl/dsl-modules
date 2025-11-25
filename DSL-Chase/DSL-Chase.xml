@@ -1,0 +1,1143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage />
+	<TimerPackage />
+	<AliasPackage />
+	<ActionPackage />
+	<ScriptPackage>
+		<Script isActive="yes" isFolder="no">
+			<name>DSL-Chase</name>
+			<packageName></packageName>
+			<script>-- TODO: List of configurable rooms to turn off
+-- TODO: Update finisher to cast if target fleets at awful even if still fighting
+
+dsl = dsl or {}
+dsl.characters = dsl.characters or {}
+dsl.characters["Ulyssus"] = dsl.characters["Ulyssus"] or {}
+dsl.characters["Ulyssus"].chase = {
+  command = "c acid",
+  ranged = false,
+  rangedCommand = "c fireball",
+  rangedDistance = 3,
+  rangedFinish = true,
+  rangedMove = true,
+  minimumHp = 350,
+  extendedScanning = true,
+  clans = {},
+}
+
+dsl.chase = dsl.chase or {}
+dsl.chase.state = dsl.chase.state or {
+    on = false,
+    debug = false,
+    ranged = false,
+    rangedFinish = false,
+    rangedMove = false,
+    fighting = false,
+    attacking = false,
+    attackingName = nil,
+    blind = false,
+    doingSimpleScan = false,
+    extendedScanning = true,
+    scanning = nil,
+    opponent = nil,
+    opponentHpPercent = nil,
+    minimumHp = 300,
+    command = "",
+    rangedCommand = "",
+    rangedDistance = 3,
+    characters = {},
+    clans = {}
+  }
+dsl.chase.triggers = dsl.chase.triggers or {}
+dsl.chase.aliases = dsl.chase.aliases or {}
+dsl.chase.eventHandlers = dsl.chase.eventHandlers or {}
+dsl.chase.loginDataHandler = dsl.chase.loginDataHandler or nil
+dsl.chase.fightingTrigger = dsl.chase.fightingTrigger or nil
+dsl.chase.whoTrigger = dsl.chase.whoTrigger or nil
+
+local GMCP_TO_DIRECTION = {
+  ["N"] = "north",
+  ["S"] = "south",
+  ["E"] = "east",
+  ["W"] = "west",
+  ["U"] = "up",
+  ["D"] = "down",
+  ["NW"] = "northwest",
+  ["NE"] = "northeast",
+  ["SW"] = "southwest",
+  ["SE"] = "southeast"
+}
+
+local DIRECTION_OPPOSITES = {
+  ["south"] = "north",
+  ["north"] = "south",
+  ["west"] = "east",
+  ["east"] = "west",
+  ["down"] = "up",
+  ["up"] = "down",
+  ["southeast"] = "northwest",
+  ["southwest"] = "northeast",
+  ["northeast"] = "southwest",
+  ["northwest"] = "southeast"
+}
+
+function dsl.chase.send(cmd)  
+  if not gmcp.char_data.is_afk then
+    send(cmd)
+  end
+end
+
+function dsl.chase.echo(msg)
+  cecho("\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; " ..msg .."&lt;reset&gt;\n")
+end
+
+function dsl.chase.error(msg)
+  cecho("\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;red&gt; " ..msg .."&lt;reset&gt;\n")
+end
+
+function dsl.chase.debug(msg)
+  if dsl.chase.state.debug then
+    cecho("\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;red&gt; DEBUG: " ..msg .."&lt;reset&gt;\n")
+  end
+end
+
+function dsl.chase.createTrigger(substring, func) 
+  table.insert(dsl.chase.triggers, tempTrigger(substring, func)) 
+end
+
+function dsl.chase.createRegexTrigger(regex, func) 
+  table.insert(dsl.chase.triggers, tempRegexTrigger(regex, func)) 
+end
+
+function dsl.chase.createEventHandler(evt, func) 
+  table.insert(dsl.chase.eventHandlers, registerAnonymousEventHandler(evt, func)) 
+end
+
+function dsl.chase.createAlias(alias, func)
+	dsl.chase.aliases[alias] = tempAlias("^" .. alias .. "$", func)
+end
+
+function dsl.chase.resetVariables()
+  dsl.chase.debug("Resetting variables")
+	dsl.chase.state.on = false
+  dsl.chase.stopAttacking()
+  dsl.chase.state.scanning = nil
+  dsl.chase.state.blind = false
+  dsl.chase.state.doingSimpleScan = false
+end
+
+function dsl.chase.getClanColored(clan)
+  if clan == "Knighthood" then return "&lt;gray&gt;[ &lt;ansiLightBlue&gt;Knighthood&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Shadow" then return "&lt;gray&gt;[ Shadow ]&lt;reset&gt;" end
+  if clan == "Justice" then return "&lt;gray&gt;[ &lt;ansiBlue&gt;Justice&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Bloodlust" then return "&lt;gray&gt;[ &lt;ansiRed&gt;Bloodlust&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Shalonesti" then return "&lt;gray&gt;[ &lt;ansiGreen&gt;Shalonesti&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Wargar" then return "&lt;gray&gt;[ &lt;ansiLightCyan&gt;Wargar&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Slayers" then return "&lt;gray&gt;[ &lt;ansiLightYellow&gt;Slayers&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Chaos" then return "&lt;ansiLightRed&gt;[ &lt;ansiLightBlack&gt;Chaos&lt;ansiLightRed&gt; ]&lt;reset&gt;" end
+  if clan == "White Robes" then return "&lt;gray&gt;[ &lt;ansiLightWhite&gt;White Robes&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Red Robes" then return "&lt;gray&gt;[ &lt;ansiLightRed&gt;Red Robes&lt;gray&gt; ]&lt;reset&gt;" end
+  if clan == "Black Robes" then return "&lt;gray&gt;[ &lt;ansiLightBlack&gt;Black Robes&lt;gray&gt; ]&lt;reset&gt;" end
+end
+
+function dsl.chase.isClan(clan)
+  clan = string.lower(clan)
+  
+  if clan == "knighthood" then return "Knighthood" end
+  if clan == "shadow" then return "Shadow" end
+  if clan == "justice" then return "Justice" end
+  if clan == "bloodlust" then return "Bloodlust" end
+  if clan == "shalonesti" then return "Shalonesti" end
+  if clan == "wargar" then return "Wargar" end
+  if clan == "slayers" then return "Slayers" end
+  if clan == "chaos" then return "Chaos" end
+  if clan == "white robes" then return "White Robes" end
+  if clan == "red robes" then return "Red Robes" end
+  if clan == "black robes" then return "Black Robes" end
+  
+  return ""
+end
+
+function dsl.chase.addCharacter(name, clan)
+  clan = clan or ""
+  
+  local exists = false
+  
+  for characterName, _ in pairs(dsl.chase.state.characters) do
+    if string.lower(characterName) == string.lower(name) then
+      exists = true
+    end
+  end
+  
+  
+  if not exists then
+    dsl.chase.debug("Adding character " ..name .." with clan " ..clan)
+    dsl.chase.state.characters[name] = clan
+    
+    if hideStatus then
+      dsl.chase.echo("Added character: " ..name)
+    end
+  else
+    dsl.chase.debug("Character already added " ..name .." with clan " ..clan)
+  end
+end
+
+function dsl.chase.removeCharacter(name)
+  dsl.chase.debug("Removing character " ..name)
+  
+  for characterName, _ in pairs(dsl.chase.state.characters) do
+    if string.lower(characterName) == string.lower(name) then
+      dsl.chase.state.characters[characterName] = nil
+    end
+  end
+  
+  dsl.chase.showStatus()
+end
+
+function dsl.chase.addClan(clan)
+  local exists = false
+  
+  for _, existingClan in pairs(dsl.chase.state.clans) do
+    if clan == existingClan then
+      exists = true
+    end
+  end
+  
+  if not exists then
+    dsl.chase.debug("Adding clan " ..clan)
+    table.insert(dsl.chase.state.clans, clan)
+    dsl.chase.createWhoTrigger()
+    dsl.chase.send("whoc")
+    dsl.chase.send("c")
+    dsl.chase.send("c")
+  else
+    dsl.chase.debug("Already added clan " ..clan)
+  end
+end
+
+function dsl.chase.removeClan(clan)
+  dsl.chase.debug("Removing clan " ..clan)
+    
+  for character, clanName in pairs(dsl.chase.state.characters) do
+    if clanName == clan then
+      dsl.chase.state.characters[character] = nil
+    end
+  end
+  
+  for key, clanName in ipairs(dsl.chase.state.clans) do
+    if clanName == clan then
+      table.remove(dsl.chase.state.clans, key)
+      dsl.chase.createWhoTrigger()
+      dsl.chase.showStatus()
+      return true
+    end
+  end
+  
+  return false
+end
+
+function dsl.chase.isTarget(name)
+  local isTarget = false
+  
+  for characterName, _ in pairs(dsl.chase.state.characters) do
+    if string.lower(characterName) == string.lower(name) then
+      isTarget = true
+    end
+  end
+  
+  return isTarget
+end
+
+function dsl.chase.canChase(name)
+  if gmcp.char_data.is_afk then
+    dsl.chase.debug("Can't chase - AFK")
+    return false
+  end
+  
+  if not dsl.chase.isTarget(name) then
+    dsl.chase.debug("Can't chase - Not a valid target")
+    return false
+  end
+  
+  if dsl.chase.state.is_fighting then
+    dsl.chase.debug("Can't chase - Currently fighting")
+    return false
+  end
+  
+  if dsl.chase.state.blind then
+    dsl.chase.debug("Can't chase - Currently blind")
+    return false
+  end
+  
+  if dsl.chase.state.attacking then
+    dsl.chase.debug("Can't chase - Currently attacking target")
+    return false
+  end
+  
+  if dsl.chase.state.minimumHp ~= nil
+    and dsl.chase.state.minimumHp ~= ""
+    and gmcp.char_data.hp &lt; dsl.chase.state.minimumHp then
+    dsl.chase.debug("Can't chase - Current HP is below minimum HP")
+    return false
+  end
+  
+  dsl.chase.debug("We can chase " ..name)
+  return true
+end
+
+function dsl.chase.chaseAndAttack(name, direction, distance)
+  if dsl.chase.canChase(name) then
+    dsl.chase.debug("Chasing and attacking " ..name)
+    
+    	dsl.chase.state.attacking = true
+    dsl.chase.state.attackingName = name
+    	dsl.chase.stopExtendedScanning()
+    
+    distance = distance or 1
+    
+		if direction ~= nil then
+      local moveDistance = distance
+      local moveDirection = direction
+      
+      if dsl.chase.state.ranged then
+        moveDistance = 0
+        
+        if distance &gt; dsl.chase.state.rangedDistance then
+          moveDistance = distance - dsl.chase.state.rangedDistance
+        elseif distance &lt; dsl.chase.state.rangedDistance
+          and dsl.chase.state.rangedMove then
+          for _, gmcpDirection in pairs(gmcp.room_data.exits) do
+            if GMCP_TO_DIRECTION[gmcpDirection] == DIRECTION_OPPOSITES[direction] then
+              moveDirection = DIRECTION_OPPOSITES[direction]
+              moveDistance = 1
+            end
+          end
+        end
+      end
+      
+      for i = 1, moveDistance do
+			 dsl.chase.send(moveDirection)
+      end
+		end
+    
+    	if dsl.chase.state.ranged and direction ~= nil then
+      dsl.functions.debug("Ranging target with ranged command")
+    		dsl.chase.send(dsl.chase.state.rangedCommand .. " " .. direction .. " " .. name)
+        
+      -- Ranged attack's have various success messages. Unset the attacking flag
+      -- in one second so that the next scan will allow reattacking. When
+      -- the target isn't found we get the "They aren't here." feedback so
+      -- attacking flag will be unset immediately before the scan
+      tempTimer(2, 
+        function()
+          if dsl.chase.state.attacking then
+            dsl.chase.stopAttacking()
+            
+    		      dsl.chase.send("scan " .. direction)
+          end
+        end)
+    	else
+      dsl.functions.debug("Attacking target with command")
+    		dsl.chase.send(dsl.chase.state.command .. " " .. name)
+    	end
+  end
+end
+
+function dsl.chase.killSimpleScanFinishedTrigger()
+  if dsl.chase.simpleScanFinishedTrigger ~= nil then
+    dsl.chase.debug("Killing simple scan finished trigger")
+    killTrigger(dsl.chase.simpleScanFinishedTrigger)
+  end
+  dsl.chase.simpleScanFinishedTrigger = nil
+end
+
+function dsl.chase.killExtendedScanningTrigger()
+  if dsl.chase.extendedScanningTrigger ~= nil then
+    dsl.chase.debug("Killing extended scanning trigger")
+    killTrigger(dsl.chase.extendedScanningTrigger)
+  end
+  	dsl.chase.extendedScanningTrigger = nil
+end
+
+function dsl.chase.stopExtendedScanning()
+  dsl.chase.killExtendedScanningTrigger()
+  
+  if dsl.chase.state.scanning ~= nil then
+    dsl.chase.debug("Emptying scanning state")
+    dsl.chase.state.scanning = nil
+  end
+end
+
+function dsl.chase.continueExtendedScanning()
+  if not gmcp.char_data.is_afk
+    and dsl.chase.state.scanning ~= nil then
+    dsl.chase.debug("Continuing extended scanning")
+    
+    if dsl.chase.extendedScanningTrigger == nil then
+      	dsl.chase.extendedScanningTrigger = tempTrigger(
+        "You peer intently ", dsl.chase.continueExtendedScanning)
+    end
+    
+    
+    if #dsl.chase.state.scanning &gt; 0
+      and not dsl.chase.state.attacking then
+      local direction = table.remove(dsl.chase.state.scanning)
+      dsl.chase.send("scan " ..direction)
+    else
+      dsl.chase.stopExtendedScanning()
+    end
+  else
+    dsl.chase.debug("Unable to continue extended scanning")
+  end
+end
+
+function dsl.chase.stopAttacking()
+  dsl.chase.state.attacking = false
+  dsl.chase.state.attackingName = nil
+end
+
+function dsl.chase.setupResources()
+
+  dsl.chase.teardownResources()
+  dsl.chase.debug("Setting up resources")
+
+  --"(The ghost of )?(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies|leaves) (up|down|north|east|south|west|southwest|southeast)(.*)?", 
+
+	dsl.chase.createRegexTrigger(
+		"(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?(walks|floats|runs|flies) (?&lt;direction&gt;.*).",
+		function()
+      dsl.chase.debug("Triggering chase trigger for someone entering or exiting room")
+      local direction = matches.direction
+      
+      if matches.direction == "in" then
+        direction = nil
+      end
+      
+      if dsl.chase.state.attacking
+        and matches.name == dsl.chase.state.attackingName then
+        dsl.chase.debug("Already attacking " ..matches.name ..". Resetting")
+        dsl.chase.send("~")
+        dsl.chase.stopAttacking()
+      end
+
+      dsl.chase.chaseAndAttack(matches.name, direction)
+		end)
+    
+  dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;[a-zA-Z-']*) ([a-zA-Z-']*\\s)?has arrived", 
+    function()
+      dsl.chase.debug("Triggering chase trigger for someone arriving")
+      dsl.chase.chaseAndAttack(matches.name)
+    end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*), right here.",
+    function()
+      dsl.functions.debug("Triggering chase trigger for current room from simple scan")
+    		dsl.chase.chaseAndAttack(matches.name)
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*) has arrived through (.*)", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for entering through portal")
+      	dsl.chase.chaseAndAttack(matches.name)
+  	   end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*) goes to sleep.", 
+    function()
+    		if dsl.chase.isTarget(matches.name) then
+    			--dsl.functions.speak(dsl.state.pvptarget .. " slept")
+    			dsl.chase.send("gtell " .. matches.name .. " slept at " .. gmcp.room_data.room)
+    		end
+    	end)
+      
+  dsl.chase.createTrigger(
+    "resists your magic!",
+    function()
+      if dsl.chase.state.attacking then
+        dsl.functions.debug("Target resisted magic, scanning")
+        dsl.chase.stopAttacking()
+      		if not gmcp.char_data.is_afk 
+          and dsl.chase.state.scanning == nil
+          and not dsl.chase.state.doingSimpleScan then
+      			dsl.chase.send("scan")
+      		end
+      end
+    end)
+
+	dsl.chase.createTrigger(
+    "They aren't here.", 
+    function()
+      if dsl.chase.state.attacking then
+        dsl.functions.debug("Target not found, scanning")
+        dsl.chase.stopAttacking()
+      		if not gmcp.char_data.is_afk 
+          and dsl.chase.state.scanning == nil
+          and not dsl.chase.state.doingSimpleScan then
+      			dsl.chase.send("scan")
+      		end
+      end
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*) appears in the room.", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for recalling")
+      	dsl.chase.chaseAndAttack(matches.name)
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(\\(.*\\)\\s)?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sitting|standing)(.*)", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for current room")
+      	dsl.chase.chaseAndAttack(matches.name)
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*), nearby to the (?&lt;direction&gt;.*).", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for nearby")
+      	dsl.chase.chaseAndAttack(matches.name, matches.direction, 1)
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*), not far (?&lt;direction&gt;.*).", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for not far off")
+      	dsl.chase.chaseAndAttack(matches.name, matches.direction, 2)
+    	end)
+
+	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*), off in the distance (?&lt;direction&gt;.*).", 
+    function()
+      dsl.functions.debug("Triggering chase trigger for off in distance")
+      	dsl.chase.chaseAndAttack(matches.name, matches.direction, 3)
+    	end)
+      
+  dsl.chase.createTrigger(
+    "Your spirit leaves your corpse as your body has perished.",
+    function()
+      if dsl.chase.state.on then
+        dsl.chase.echo("Turning off Chase. Ghosted.")
+        dsl.chase.off()
+      end
+    end)
+
+	dsl.chase.createTrigger(
+    "Looking around you see:", 
+    function()
+      
+    		if not gmcp.char_data.is_afk 
+        and dsl.chase.state.scanning == nil
+        and not dsl.chase.state.doingSimpleScan
+        and not dsl.chase.state.blind
+        and not dsl.chase.state.attacking then
+        dsl.chase.debug("Simple scan starting")
+        
+        dsl.chase.killSimpleScanFinishedTrigger()
+        
+        dsl.chase.simpleScanFinishedTrigger = tempRegexTrigger(
+          "^$", 
+          function()
+            dsl.chase.debug("Simple scan finished")
+            if dsl.chase.state.doingSimpleScan then
+              dsl.chase.state.doingSimpleScan = false
+              
+              if not dsl.chase.state.attacking
+                and dsl.chase.state.extendedScanning then
+            			dsl.chase.state.scanning = {}
+                  
+                for _, gmcpDirection in pairs(gmcp.room_data.exits) do
+                  table.insert(dsl.chase.state.scanning, GMCP_TO_DIRECTION[gmcpDirection])
+                end
+                
+                dsl.chase.continueExtendedScanning()
+              else
+                dsl.chase.debug("Not doing extended scanning. Target found or not enabled")
+              end
+              
+              dsl.chase.killSimpleScanFinishedTrigger()
+            end
+          	end)
+        
+        dsl.chase.stopAttacking()
+        dsl.chase.state.doingSimpleScan = true
+      else
+        dsl.chase.debug("Can't currently continue scanning")
+    		end
+    	end)    
+      
+  dsl.chase.createEventHandler(
+    "gmcp.char_data",
+    function()
+      -- Fighting has started
+      if not dsl.chase.state.fighting and gmcp.char_data.is_fighting  then
+        dsl.chase.debug("Fighting has started")
+        dsl.chase.stopAttacking()
+        dsl.chase.state.scanning = nil
+      end
+      
+      -- Fighting has stopped
+      if dsl.chase.state.fighting and not gmcp.char_data.is_fighting  then
+        dsl.chase.debug("Fighting has ended. Scanning")
+        
+        if dsl.chase.state.rangedFinish and dsl.chase.state.opponentHpPercent &lt;= 15 then  
+          for _, gmcpDirection in pairs(gmcp.room_data.exits) do
+    		      dsl.chase.send(dsl.chase.state.rangedCommand 
+              .. " " .. GMCP_TO_DIRECTION[gmcpDirection] 
+              .. " " .. dsl.chase.state.opponent)
+          end
+        end
+        
+        dsl.chase.state.opponent = nil
+        dsl.chase.state.opponentHpPercent = nil
+        dsl.chase.send("scan")
+      end
+      
+      dsl.chase.state.fighting = gmcp.char_data.is_fighting
+    end)
+      
+  dsl.chase.createEventHandler(
+    "gmcp.room_data",
+    function()
+      if dsl.chase.state.blind and gmcp.room_data.room ~= "darkness" then
+        dsl.chase.debug("No longer blinded")
+        dsl.chase.state.blind = false
+        return
+      end
+      
+      if gmcp.room_data.room == "darkness" and not dsl.chase.state.blind then
+        dsl.chase.debug("Blinded")
+        dsl.chase.state.blind = true
+      end
+    end)
+end
+
+function dsl.chase.teardownResources()
+  dsl.chase.debug("Tearing down resources")
+  
+  dsl.chase.resetVariables()
+  
+  for _, triggerId in pairs(dsl.chase.triggers) do
+		killTrigger(triggerId)
+	end
+  dsl.chase.triggers = {}
+
+	for _, handlerId in pairs(dsl.chase.eventHandlers) do
+		killAnonymousEventHandler(handlerId)
+	end
+  dsl.chase.eventHandlers = {}
+  
+  dsl.chase.killSimpleScanFinishedTrigger()
+  dsl.chase.killExtendedScanningTrigger()
+end
+
+function dsl.chase.createWhoTrigger()
+  dsl.chase.destroyWhoTrigger()
+  
+  if dsl.chase.state.clans == nil
+    or #dsl.chase.state.clans == 0 then
+    dsl.chase.debug("Skipping creating who trigger")
+    return
+  end
+  
+  dsl.chase.debug("Creating who trigger")
+  dsl.chase.whoTrigger = tempRegexTrigger(
+    	"\\[\\s*?(?&lt;level&gt;[0-9]+)(\\s*[a-zA-Z-]+\\s)?\\s*([a-zA-Z]+)]\\s*[[|(]\\s*(?&lt;clan&gt;[a-zA-Z]+\\s?[a-zA-Z]+?)\\*?\\s*(]|\\))\\s*(?&lt;name&gt;[A-Za-z']+)",
+    function()
+      local isChasedClan = false
+            
+      for _, clan in ipairs(dsl.chase.state.clans) do
+        if clan == matches.clan then
+          isChasedClan = true
+        end
+      end
+      
+      if isChasedClan
+        and tonumber(matches.level) &gt;= gmcp.login_data.level - 8
+        and tonumber(matches.level) &lt;= gmcp.login_data.level
+        and not dsl.chase.state.characters[matches.name] then
+        dsl.chase.addCharacter(matches.name, matches.clan)
+      end
+    end)
+end
+
+function dsl.chase.destroyWhoTrigger()
+  if dsl.chase.whoTrigger ~= nil then
+    dsl.chase.debug("Destroying who trigger")
+    killTrigger(dsl.chase.whoTrigger)
+  end
+  dsl.chase.whoTrigger = nil
+end
+
+function dsl.chase.startChaseIfNeeded()
+  if gmcp and gmcp.char_data and gmcp.room_data then
+    if not dsl.chase.state.on then
+      if dsl.chase.state.command then
+        dsl.chase.setupResources()
+        dsl.chase.state.on = true
+      else
+        dsl.chase.error("No command set. Use: &lt;cyan&gt;chase &lt;command&gt;")
+      end
+    end
+    
+    dsl.chase.showStatus()
+  else
+    dsl.chase.error("gmcp data not detected. Unable to begin the Chase.")
+  end
+end
+
+function dsl.chase.off()
+  dsl.chase.teardownResources()
+end
+
+function dsl.chase.cleanQuoted(str)
+  return (str:match("^[\"'](.*)[\"']$") or str)
+end
+
+
+function dsl.chase.showCommands()
+  dsl.chase.echo("DSL-Chase Version 1.0.0"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase&lt;gray&gt; to show current state or add current opponent"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase &lt;character or clan&gt;&lt;gray&gt; to begin chasing the character or clan"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase on&lt;gray&gt; to toggle the Chase on"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase off&lt;gray&gt; to toggle the Chase off"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase help&lt;gray&gt; to show a list of commands"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase clear&lt;gray&gt; to remove all current characters and clans"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase min &lt;minimum hp&gt;&lt;gray&gt; to set the minimum hp"    
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase min&lt;gray&gt; to unset the minimum hp"    
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase command &lt;command&gt;&lt;gray&gt; to set the attack command"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase ranged&lt;gray&gt; to toggle ranged mode on or off"  
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase ranged finish&lt;gray&gt; to toggle ranged finisher mode on or off"      
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase ranged &lt;ranged command&gt;&lt;gray&gt; to set ranged command"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase ranged distance &lt;distance&gt;&lt;gray&gt; to set ranged distance"    
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase ranged move&lt;gray&gt; to toggle moving away before ranging"      
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase add &lt;character or clan&gt;&lt;gray&gt; to add a character or clan to chase"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase remove &lt;character or clan&gt;&lt;gray&gt; to remove a character or clan"
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase extended&lt;gray&gt; enable/disable extended scanning"    
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Type &lt;cyan&gt;chase debug&lt;gray&gt; enable/disable showing debug info"
+    )
+end
+
+function dsl.chase.getBooleanDisplay(val)
+  if val then
+    return "&lt;green&gt;Yes&lt;reset&gt;"
+  else
+    return "&lt;red&gt;No&lt;reset&gt;"
+  end
+end
+
+function dsl.chase.showStatus()  
+  local characters = ""
+  local clans = ""
+  
+  for name, clan in pairs(dsl.chase.state.characters) do
+    local clanTag = clan
+    
+    if clanTag and clanTag ~= "" then
+      clanTag = dsl.chase.getClanColored(clanTag) .. " "
+    else
+      clanTag = ""
+    end
+    
+    characters = characters .."\n        " ..clanTag .."&lt;white&gt;" ..name
+  end
+  
+  for _, clan in ipairs(dsl.chase.state.clans) do
+    if clan ~= nil then
+      clans = clans .."\n        " ..dsl.chase.getClanColored(clan)
+    end
+  end
+  
+  local minHp = dsl.chase.state.minimumHp or ""
+  
+  dsl.chase.echo(
+    "On: " 
+    ..dsl.chase.getBooleanDisplay(dsl.chase.state.on)
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Command: &lt;white&gt;" 
+    ..dsl.chase.state.command
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Ranged: " 
+    ..dsl.chase.getBooleanDisplay(dsl.chase.state.ranged)
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Ranged Command: &lt;white&gt;" 
+    ..dsl.chase.state.rangedCommand
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Ranged Distance: &lt;white&gt;" 
+    ..dsl.chase.state.rangedDistance
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Ranged Finish: " 
+    ..dsl.chase.getBooleanDisplay(dsl.chase.state.rangedFinish)
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Ranged Move: " 
+    ..dsl.chase.getBooleanDisplay(dsl.chase.state.rangedMove)
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Extended Scanning: &lt;white&gt;" 
+    ..dsl.chase.getBooleanDisplay(dsl.chase.state.extendedScanning)
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Minimum HP: &lt;white&gt;" 
+    ..minHp
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Clans: &lt;white&gt;" 
+    ..clans
+    .."\n&lt;white&gt;[&lt;cyan&gt;Chase&lt;white&gt;]&lt;gray&gt; Characters: &lt;white&gt;" 
+    ..characters
+    )
+end
+
+function dsl.chase.handleChaseAlias()
+  local args = matches[2] and matches[2]:trim() or ""
+
+  if args == "" then
+    if gmcp.char_data.is_fighting
+      and dsl.chase.state.opponent ~= nil then
+      dsl.chase.addCharacter(dsl.chase.state.opponent)
+      dsl.chase.startChaseIfNeeded()
+    else
+      dsl.chase.showStatus()
+    end
+    
+    return
+  end
+
+  -- main pattern breakdown
+  -- handle the top-level subcommand word
+  local sub1, rest = args:match("^(%S+)%s*(.*)$")
+  
+  sub1 = sub1 and sub1:lower() or ""
+
+  if sub1 == "help" then
+    dsl.chase.showCommands()
+    return
+  end
+
+  if sub1 == "on" then
+    if dsl.chase.state.command then
+      dsl.chase.startChaseIfNeeded()
+    else
+      dsl.chase.error("No command set. Use:&lt;cyan&gt; chase &lt;command&gt;")
+    end
+    
+    return
+  end
+
+  if sub1 == "off" then
+    dsl.chase.off()
+    dsl.chase.showStatus()
+    return
+  end
+
+  if sub1 == "status" then
+    dsl.chase.showStatus()
+    return
+  end
+
+  if sub1 == "debug" then
+    if dsl.chase.state.debug then
+      dsl.chase.state.debug = false
+      dsl.chase.echo("Debug &lt;red&gt;Off")
+    else
+      dsl.chase.state.debug = true
+      dsl.chase.echo("Debug &lt;green&gt;On")
+    end
+    return
+  end
+
+  if sub1 == "extended" then
+    if dsl.chase.state.extendedScanning then
+      dsl.chase.state.extendedScanning = false
+    else
+      dsl.chase.state.extendedScanning = true
+    end
+    
+    dsl.chase.showStatus()
+    return
+  end
+
+  if sub1 == "clear" then
+    dsl.chase.state.clans = {}
+    dsl.chase.destroyWhoTrigger()
+    dsl.chase.state.characters = {}
+    dsl.chase.showStatus()
+    return
+  end
+  
+  if sub1 == "min" then
+    if rest == "" then
+      dsl.chase.state.minimumHp = nil
+      dsl.chase.showStatus()
+    else
+      dsl.chase.state.minimumHp = tonumber(rest)        
+      dsl.chase.showStatus()
+    end
+    return
+  end
+
+  if sub1 == "ranged" then
+    local sub2, rest2 = rest:match("^(%S+)%s*(.*)$")
+    
+    local rangedCommand = dsl.chase.cleanQuoted(rest)
+    
+    if rangedCommand == "" then
+      if not dsl.chase.state.ranged then
+        if dsl.chase.state.rangedCommand then
+          dsl.chase.state.ranged = true
+          dsl.chase.showStatus()
+        else
+          dsl.chase.error("No ranged command set. Use:&lt;cyan&gt; chase range &lt;ranged command&gt;")
+        end
+      elseif dsl.chase.state.ranged then
+        dsl.chase.state.ranged = false
+        dsl.chase.showStatus()
+      end
+      
+      return
+    elseif rangedCommand == "finish" then
+      if dsl.chase.state.rangedFinish then
+        dsl.chase.state.rangedFinish = false
+        dsl.chase.showStatus()
+      else
+        if dsl.chase.state.rangedCommand then
+          dsl.chase.state.rangedFinish = true
+          dsl.chase.showStatus()
+        else
+          dsl.chase.error("No ranged command set. Use:&lt;cyan&gt; chase range &lt;ranged command&gt;")
+        end
+      end
+      return
+    elseif rangedCommand == "move" then
+      if dsl.chase.state.rangedMove then
+        dsl.chase.state.rangedMove = false
+        dsl.chase.showStatus()
+      else
+        if dsl.chase.state.rangedCommand then
+          dsl.chase.state.rangedMove = true
+          dsl.chase.showStatus()
+        else
+          dsl.chase.error("No ranged command set. Use:&lt;cyan&gt; chase range &lt;ranged command&gt;")
+        end
+      end
+      return
+    elseif sub2 == "distance" then
+      dsl.chase.state.rangedDistance = tonumber(rest2)
+      dsl.chase.showStatus()
+      return
+    else
+      dsl.chase.state.rangedCommand = rangedCommand
+      
+      if not dsl.chase.state.ranged then
+        dsl.chase.state.ranged = true
+      end
+      
+      dsl.chase.showStatus()
+      
+      return
+    end
+  end
+  
+  if sub1 == 'command' then
+    local command = dsl.chase.cleanQuoted(rest)
+    
+    if command == "" then
+      dsl.chase.error("No command set. Use:&lt;cyan&gt; chase command &lt;command&gt;")
+      return
+    else
+      dsl.chase.state.command = command
+      dsl.chase.showStatus()
+      return
+    end
+  end
+  
+  
+  -- chase add/remove &lt;name or clan&gt;
+  -- or default of chase &lt;character&gt;
+  --if sub1 == "add" or sub1 == "remove" then
+    local mode = sub1
+    
+    local sub2, rest2 = rest:match("^(%S+)%s*(.*)$")
+    
+    sub2 = sub2 and sub2:lower() or ""
+
+    -- chase add/remove &lt;character name&gt;
+    local charName = ""
+    
+    if mode == "add" or mode == "remove" then
+      charName = rest:match("^['\"]?(.-)['\"]?$") or rest
+    else
+      charName = args
+    end
+    
+    if charName == "" then
+      dsl.chase.error("Invalid Command. Usage:&lt;cyan&gt; chase &lt;character or clan&gt;")
+      return
+    end
+      
+    local clan = dsl.chase.isClan(charName)
+    
+    if mode == "remove" then
+      if clan ~= "" then
+        dsl.chase.removeClan(clan)
+      else
+        dsl.chase.removeCharacter(charName)
+      end
+    else
+      if clan ~= "" then
+        dsl.chase.addClan(clan)
+      else
+        dsl.chase.addCharacter(charName)
+      end
+      
+      if mode ~= "add" and dsl.chase.state.command then
+        dsl.chase.startChaseIfNeeded()
+      else
+        dsl.chase.showStatus()
+      end
+    end
+    
+    return
+  --end
+
+  --dsl.chase.error("Invalid command. Use:&lt;cyan&gt; chase help &lt;red&gt;to see commands")
+end
+
+function dsl.chase.configureDefaultCharacter()
+  if gmcp ~= nil and gmcp.login_data ~= nil
+    and dsl.characters ~= nil
+    and dsl.characters[gmcp.login_data.name] ~= nil
+    and dsl.characters[gmcp.login_data.name].chase ~= nil then
+    dsl.chase.debug("Configuring defaults for " ..gmcp.login_data.name)
+    
+    local defaults = dsl.characters[gmcp.login_data.name].chase
+    
+    dsl.chase.state.command = defaults.command
+    dsl.chase.state.rangedCommand = defaults.rangedCommand
+    dsl.chase.state.rangedDistance = tonumber(defaults.rangedDistance)
+    dsl.chase.state.minimumHp = tonumber(defaults.minimumHp)
+    
+    if defaults.extendedScanning ~= nil
+      and type(defaults.extendedScanning) == 'boolean' then
+      dsl.chase.state.extendedScanning = defaults.extendedScanning
+    end
+    
+    if defaults.rangedFinish ~= nil
+      and type(defaults.rangedFinish) == 'boolean' then
+      dsl.chase.state.rangedFinish = defaults.rangedFinish
+    end
+    
+    if defaults.rangedMove ~= nil
+      and type(defaults.rangedMove) == 'boolean' then
+      dsl.chase.state.rangedMove = defaults.rangedMove
+    end
+
+    if defaults.clans ~= nil and type(defaults.clans) == 'table' then
+      dsl.chase.state.clans = {}
+      
+      for _, clan in pairs(defaults.clans) do
+        table.insert(dsl.chase.state.clans, clan)
+      end
+    end
+    
+    dsl.chase.createWhoTrigger()
+  end
+end
+
+function dsl.chase.createModule()
+  dsl.chase.debug("Creating module")
+  if dsl.chase.loginDataHandler ~= nil then
+    killAnonymousEventHandler(dsl.chase.loginDataHandler)
+  end
+  
+  dsl.chase.loginDataHandler = registerAnonymousEventHandler(
+    "gmcp.login_data", dsl.chase.configureDefaultCharacter)
+    
+  if dsl.chase.uninstallHandler ~= nil then
+    killAnonymousEventHandler(dsl.chase.uninstallHandler)
+  end
+  
+  dsl.chase.uninstallHandler = registerAnonymousEventHandler(
+    "sysUninstall", 
+    function(_, packageName)
+      	if packageName == "DSL-Chase" then
+      		dsl.chase.destroyModule()
+      	end
+    end)
+    
+  if dsl.chase.fightingTrigger ~= nil then
+    killTrigger(dsl.chase.fightingTrigger)
+  end
+      
+  dsl.chase.fightingTrigger = tempRegexTrigger(
+    "(?&lt;target&gt;[a-zA-Z']+) (is in excellent condition\\."
+      .."|has a few scratches\\."
+      .."|has some small wounds and bruises\\."
+      .."|has quite a few wounds\\."
+      .."|has some big nasty wounds and scratches\\."
+      .."|looks pretty hurt\\."
+      .."|is in awful condition\\.)",
+    function()
+      dsl.chase.state.opponent = matches.target
+      
+      if matches[3] == 'is in excellent condition.' then
+        dsl.chase.state.opponentHpPercent = 100
+      elseif matches[3] == 'has a few scratches.' then
+        dsl.chase.state.opponentHpPercent = 99
+      elseif matches[3] == 'has some small wounds and bruises.' then
+        dsl.chase.state.opponentHpPercent = 89
+      elseif matches[3] == 'has quite a few wounds.' then
+        dsl.chase.state.opponentHpPercent = 74
+      elseif matches[3] == 'has some big nasty wounds and scratches.' then
+        dsl.chase.state.opponentHpPercent = 49
+      elseif matches[3] == 'looks pretty hurt.' then
+        dsl.chase.state.opponentHpPercent = 29
+      elseif matches[3] == 'is in awful condition.' then
+        dsl.chase.state.opponentHpPercent = 14
+      end
+      
+      dsl.chase.debug("Fighting " ..dsl.chase.state.opponent
+        .." with " ..dsl.chase.state.opponentHpPercent .."% HP")
+    end)
+    
+  for _, aliasId in pairs(dsl.chase.aliases) do
+    killAlias(aliasId)
+  end
+  dsl.chase.aliases = {}
+    
+  dsl.chase.createAlias([[^chase(?:\s+(.*))?$]], dsl.chase.handleChaseAlias)
+end
+
+function dsl.chase.destroyModule()
+  dsl.chase.debug("Destroying module")
+  
+  if dsl.chase.loginDataHandler ~= nil then
+    killAnonymousEventHandler(dsl.chase.loginDataHandler)
+  end
+  dsl.chase.loginDataHandler = nil
+
+	if dsl.chase.uninstallHandler ~= nil then
+		killAnonymousEventHandler(dsl.chase.uninstallHandler)
+	end
+  dsl.chase.uninstallHandler = nil
+    
+  if dsl.chase.fightingTrigger ~= nil then
+    killTrigger(dsl.chase.fightingTrigger)
+  end
+  dsl.chase.fightingTrigger = nil
+  
+	for _, aliasId in pairs(dsl.chase.aliases) do
+		killAlias(aliasId)
+	end
+  dsl.chase.aliases = {}
+  
+  dsl.chase.destroyWhoTrigger()
+	dsl.chase.teardownResources()
+
+	dsl.chase = nil
+end
+
+dsl.chase.createModule()
+dsl.chase.configureDefaultCharacter()
+dsl.chase.showCommands()</script>
+			<eventHandlerList />
+		</Script>
+	</ScriptPackage>
+	<KeyPackage />
+	<HelpPackage>
+		<helpURL></helpURL>
+	</HelpPackage>
+</MudletPackage>

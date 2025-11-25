@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE MudletPackage>
 <MudletPackage version="1.001">
-	<TriggerPackage />
-	<TimerPackage />
-	<AliasPackage />
-	<ActionPackage />
 	<ScriptPackage>
 		<Script isActive="yes" isFolder="no">
 			<name>DSL-Auto-Regen</name>
@@ -940,7 +936,6 @@ end
   
 dsl.autoregen.uninstallHandler = registerAnonymousEventHandler("sysUninstall", function(_, packageName)
 	if packageName == "DSL-Auto-Regen" then
-    dsl.autoregen.debug("Module is being uninstalled. Tearing down and removing all resources.")
 		if dsl.autoregen.loginDataEventHandler ~= nil then
       killAnonymousEventHandler(dsl.autoregen.loginDataEventHandler)
     end
@@ -964,8 +959,4 @@ end</script>
 			<eventHandlerList />
 		</Script>
 	</ScriptPackage>
-	<KeyPackage />
-	<HelpPackage>
-		<helpURL></helpURL>
-	</HelpPackage>
 </MudletPackage>
