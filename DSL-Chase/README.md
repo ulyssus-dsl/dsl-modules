@@ -18,20 +18,64 @@ To configure a character, with the module installed in "sync" mode update the fo
 dsl = dsl or {}
 dsl.characters = dsl.characters or {}
 
--- Repeat the following configuration for each character needed
+-- Repeat the following configuration for each character needed.
 -- The below configuration can be placed into a separate script file
 -- outside of this module if desired.
 dsl.characters["Ulyssus"] = dsl.characters["Ulyssus"] or {}
 dsl.characters["Ulyssus"].chase = {
-  command = "c acid", -- The default command to use to attack
-  ranged = false, -- Whether ranged mode is enabled by default
-  rangedCommand = "c fireball", -- The command to use with ranged modes
-  rangedDistance = 3, -- The room distance of the ranged attack
-  rangedFinish = true, -- Default value for ranged finish mode
-  rangedMove = true, -- Whether to move away in opposite direction before ranging
-  minimumHp = 350, -- The minimum HP in which to stop automatically chasing
-  extendedScanning = true, -- Enables scanning in all open directions
-  clans = {}, -- Default clans to target
+-- The default command to use when attacking
+  command = "c acid",
+
+  -- Whether or not to enable ranged mode by default
+  ranged = false,
+
+  -- The default command to use when using ranged attacks
+  rangedCommand = "c fireball",
+
+  -- The max distance in rooms of the ranged command
+  rangedDistance = 3,
+
+  -- Whether to enable ranged finish mode by default. 
+  -- This will cast your ranged attack in each open direction when the opponent flees at awful.
+  rangedFinish = true,
+
+  -- When using ranged mode, if the default value is true will move the character one room in 
+  -- the opposite direction if able to before using the ranged attack
+  rangedMove = true,
+
+  -- Default minimum HP. Chasing will stop once HP is below this
+  minimumHp = 350,
+
+  -- Default value of whether extended scanning is enabled. 
+  -- Extended scanning will scan all open directions if the initial scan does not locate the target
+  extendedScanning = true,
+ 
+  -- Default list of clans to add to the chase list
+  clans = {},
+ 
+  -- A list of rooms in which chasing actions (scanning, attacking, etc)
+  -- will be disabled while in these rooms, even if chasing is currently on
+  roomDisableList = {
+    "Conclave Common Room",
+    "Center Hall of the White Tower",
+    "The Library of the White Tower",
+    "Entrance Hall of the White Tower",
+    "A classroom",
+    "Practice room",
+    "The Meeting Room of the White Robes",
+    "Third Floor of the White Tower",
+    "Tower Stables",
+    "The Apothecary",
+    "Meeting Room",
+    "Healing Chambers",
+    "An Arcane Vault",
+    "The Arcanist's Craftstation",
+    "Central Hall of Advanced Studies",
+    "Shrine of Magic",
+    "The Conclave Portal Room",
+    "Hall of Illusions",
+    "The Conclave Council Chambers",
+  },
 }
 ```
 

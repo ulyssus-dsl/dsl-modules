@@ -9,22 +9,67 @@
 		<Script isActive="yes" isFolder="no">
 			<name>DSL-Chase</name>
 			<packageName></packageName>
-			<script>-- TODO: List of configurable rooms to turn off
--- TODO: Update finisher to cast if target fleets at awful even if still fighting
-
-dsl = dsl or {}
+			<script>dsl = dsl or {}
 dsl.characters = dsl.characters or {}
+
+-- Repeat the following configuration for each character needed.
+-- The below configuration can be placed into a separate script file
+-- outside of this module if desired.
 dsl.characters["Ulyssus"] = dsl.characters["Ulyssus"] or {}
 dsl.characters["Ulyssus"].chase = {
+-- The default command to use when attacking
   command = "c acid",
+  
+  -- Whether or not to enable ranged mode by default
   ranged = false,
+  
+  -- The default command to use when using ranged attacks
   rangedCommand = "c fireball",
+  
+  -- The max distance in rooms of the ranged command
   rangedDistance = 3,
+  
+  -- Whether to enable ranged finish mode by default. 
+  -- This will cast your ranged attack in each open direction when the opponent flees at awful.
   rangedFinish = true,
+  
+  -- When using ranged mode, if the default value is true will move the character one room in 
+  -- the opposite direction if able to before using the ranged attack
   rangedMove = true,
+  
+  -- Default minimum HP. Chasing will stop once HP is below this
   minimumHp = 350,
+  
+  -- Default value of whether extended scanning is enabled. 
+  -- Extended scanning will scan all open directions if the initial scan does not locate the target
   extendedScanning = true,
+  
+  -- Default list of clans to add to the chase list
   clans = {},
+  
+  -- A list of rooms in which chasing actions (scanning, attacking, etc)
+  -- will be disabled while in these rooms, even if chasing is currently on
+  roomDisableList = {
+    "Conclave Common Room",
+    "Center Hall of the White Tower",
+    "The Library of the White Tower",
+    "Entrance Hall of the White Tower",
+    "A classroom",
+    "Practice room",
+    "The Meeting Room of the White Robes",
+    "Third Floor of the White Tower",
+    "Tower Stables",
+    "The Apothecary",
+    "Meeting Room",
+    "Healing Chambers",
+    "An Arcane Vault",
+    "The Arcanist's Craftstation",
+    "Central Hall of Advanced Studies",
+    "Shrine of Magic",
+    "The Conclave Portal Room",
+    "Hall of Illusions",
+    "The Conclave Council Chambers",
+  },
 }
 
 dsl.chase = dsl.chase or {}
@@ -48,6 +93,7 @@ dsl.chase.state = dsl.chase.state or {
     rangedCommand = "",
     rangedDistance = 3,
     characters = {},
+    roomDisableList = {},
     clans = {}
   }
 dsl.chase.triggers = dsl.chase.triggers or {}
@@ -126,6 +172,28 @@ function dsl.chase.resetVariables()
   dsl.chase.state.scanning = nil
   dsl.chase.state.blind = false
   dsl.chase.state.doingSimpleScan = false
+end
+
+function dsl.chase.isOn()
+  if not dsl.chase.state.on then
+    dsl.chase.debug("Not on - In a disabled room")
+    return false
+  end
+  
+  local inDisabledRoom = false
+  
+  for _, room in pairs(dsl.chase.state.roomDisableList) do
+    if gmcp.room_data.room == room then
+      inDisabledRoom = true
+    end
+  end
+  
+  if inDisabledRoom then
+    dsl.chase.debug("Not on - In a disabled room")
+    return false
+  end
+  
+  return true
 end
 
 function dsl.chase.getClanColored(clan)
@@ -251,6 +319,11 @@ function dsl.chase.isTarget(name)
 end
 
 function dsl.chase.canChase(name)
+  if not dsl.chase.isOn() then
+    dsl.chase.debug("Can't chase - Not on")
+    return false
+  end
+  
   if gmcp.char_data.is_afk then
     dsl.chase.debug("Can't chase - AFK")
     return false
@@ -398,6 +471,18 @@ function dsl.chase.stopAttacking()
   dsl.chase.state.attackingName = nil
 end
 
+function dsl.chase.doRangedFinishIfNeeded()
+  if dsl.chase.state.rangedFinish
+    and dsl.chase.state.opponentHpPercent ~= nil
+    and dsl.chase.state.opponentHpPercent &lt;= 15 then  
+    for _, gmcpDirection in pairs(gmcp.room_data.exits) do
+	      dsl.chase.send(dsl.chase.state.rangedCommand 
+        .. " " .. GMCP_TO_DIRECTION[gmcpDirection] 
+        .. " " .. dsl.chase.state.opponent)
+    end
+  end
+end
+
 function dsl.chase.setupResources()
 
   dsl.chase.teardownResources()
@@ -535,7 +620,8 @@ function dsl.chase.setupResources()
         and dsl.chase.state.scanning == nil
         and not dsl.chase.state.doingSimpleScan
         and not dsl.chase.state.blind
-        and not dsl.chase.state.attacking then
+        and not dsl.chase.state.attacking
+        and dsl.chase.isOn() then
         dsl.chase.debug("Simple scan starting")
         
         dsl.chase.killSimpleScanFinishedTrigger()
@@ -585,14 +671,7 @@ function dsl.chase.setupResources()
       if dsl.chase.state.fighting and not gmcp.char_data.is_fighting  then
         dsl.chase.debug("Fighting has ended. Scanning")
         
-        if dsl.chase.state.rangedFinish and dsl.chase.state.opponentHpPercent &lt;= 15 then  
-          for _, gmcpDirection in pairs(gmcp.room_data.exits) do
-    		      dsl.chase.send(dsl.chase.state.rangedCommand 
-              .. " " .. GMCP_TO_DIRECTION[gmcpDirection] 
-              .. " " .. dsl.chase.state.opponent)
-          end
-        end
-        
+        dsl.chase.doRangedFinishIfNeeded()
         dsl.chase.state.opponent = nil
         dsl.chase.state.opponentHpPercent = nil
         dsl.chase.send("scan")
@@ -1010,6 +1089,11 @@ function dsl.chase.configureDefaultCharacter()
     dsl.chase.state.rangedDistance = tonumber(defaults.rangedDistance)
     dsl.chase.state.minimumHp = tonumber(defaults.minimumHp)
     
+    if defaults.roomDisableList ~= nil
+      and type(defaults.roomDisableList) == 'table' then
+      dsl.chase.state.roomDisableList = defaults.roomDisableList
+    end
+    
     if defaults.extendedScanning ~= nil
       and type(defaults.extendedScanning) == 'boolean' then
       dsl.chase.state.extendedScanning = defaults.extendedScanning
@@ -1071,6 +1155,13 @@ function dsl.chase.createModule()
       .."|looks pretty hurt\\."
       .."|is in awful condition\\.)",
     function()
+      -- If opponent has changed, check to see if ranged finish is needed
+      -- on previous opponent
+      if dsl.chase.state.opponent ~= nil
+        and dsl.chase.state.opponent ~= matches.target then
+        dsl.chase.doRangedFinishIfNeeded()
+      end
+      
       dsl.chase.state.opponent = matches.target
       
       if matches[3] == 'is in excellent condition.' then
