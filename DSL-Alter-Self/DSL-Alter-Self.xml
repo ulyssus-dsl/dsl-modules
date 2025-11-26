@@ -86,7 +86,7 @@ function dsl.alterself.createAlias(alias, func)
 	dsl.alterself.aliases[alias] = tempAlias("^" .. alias .. "$", func)
 end
 
-function dsl.alterself.doAlter()
+function dsl.alterself.doAlter(force)
   if gmcp.char_data.is_afk then
     dsl.alterself.debug("Not altering - AFK")
     return
@@ -102,7 +102,8 @@ function dsl.alterself.doAlter()
     return
   end
   
-  if dsl.alterself.state.lastFighting ~= nil
+  if not force
+    and dsl.alterself.state.lastFighting ~= nil
     and os.difftime(os.time(), dsl.alterself.state.lastFighting) &lt; 30 then
     dsl.alterself.debug("Not altering - fighting detected in last 30 seconds")
     return
@@ -118,7 +119,8 @@ function dsl.alterself.doAlter()
     return
   end
   
-  if dsl.alterself.state.retries &gt;= 5 then
+  if not force
+    and dsl.alterself.state.retries &gt;= 5 then
     dsl.alterself.debug("Not altering - exceeded 5 retries")
     return
   end
@@ -168,7 +170,7 @@ function dsl.alterself.createTempResources()
     end)
 end
 
-function dsl.alterself.enable()
+function dsl.alterself.enable(force)
   if dsl.alterself.state.mob ~= nil
     and dsl.alterself.state.mob ~= "" then
     dsl.alterself.echo("Alter-Self is Enabled: " ..dsl.alterself.state.mob)
@@ -176,7 +178,7 @@ function dsl.alterself.enable()
     dsl.alterself.state.retries = 0
     dsl.alterself.state.sleeping = false
     dsl.alterself.createTempResources()
-    dsl.alterself.doAlter()
+    dsl.alterself.doAlter(force)
   else
     dsl.alterself.echo("Unable to enable - no mob set. Use &lt;cyan&gt;alterself &lt;mob&gt;&lt;green&gt; or &lt;cyan&gt;aself &lt;mob&gt;")
   end
@@ -200,7 +202,7 @@ function dsl.alterself.setupScript()
       end
     elseif matches[3] ~= nil and matches[3] ~= "" then
       dsl.alterself.state.mob = matches[3]:gsub("^%s*", "")
-      dsl.alterself.enable()
+      dsl.alterself.enable(true)
     else
       if dsl.alterself.state.enabled then
         dsl.alterself.echo("Alter-Self is Disabled")
