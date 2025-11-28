@@ -9,7 +9,9 @@
 		<Script isActive="yes" isFolder="no">
 			<name>DSL-Chase</name>
 			<packageName></packageName>
-			<script>dsl = dsl or {}
+			<script>-- TODO test with empty/missing defaults
+
+dsl = dsl or {}
 dsl.characters = dsl.characters or {}
 
 -- Repeat the following configuration for each character needed.
@@ -70,6 +72,25 @@ dsl.characters["Ulyssus"].chase = {
     "Hall of Illusions",
     "The Conclave Council Chambers",
   },
+  
+  -- Optional list of short aliases that can be used to quickly
+  -- set the command without needing to type "chase command &lt;command&gt;"
+  -- and instead you can type "chase &lt;command alias&gt;"
+  -- such as "chase a" for acid blast without typing "chase command c acid"
+  commandAliases = {
+    ['1'] = "c 'acid blast'",
+    ['a'] = "c 'acid blast'",
+    ['ab'] = "c 'acid blast'",
+    ['2'] = "c disjunction",
+    ['d'] = "c disjunction",
+    ['dj'] = "c disjunction",
+    ['3'] = "c sleep",
+    ['s'] = "c sleep",
+    ['sl'] = "c sleep",
+    ['4'] = "c 'energy drain'",
+    ['e'] = "c 'energy drain'",
+    ['ed'] = "c 'energy drain'",
+  },
 }
 
 dsl.chase = dsl.chase or {}
@@ -94,7 +115,8 @@ dsl.chase.state = dsl.chase.state or {
     rangedDistance = 3,
     characters = {},
     roomDisableList = {},
-    clans = {}
+    clans = {},
+    commandAliases = {}
   }
 dsl.chase.triggers = dsl.chase.triggers or {}
 dsl.chase.aliases = dsl.chase.aliases or {}
@@ -445,7 +467,8 @@ end
 
 function dsl.chase.continueExtendedScanning()
   if not gmcp.char_data.is_afk
-    and dsl.chase.state.scanning ~= nil then
+    and dsl.chase.state.scanning ~= nil
+    and dsl.chase.isOn() then
     dsl.chase.debug("Continuing extended scanning")
     
     if dsl.chase.extendedScanningTrigger == nil then
@@ -462,6 +485,7 @@ function dsl.chase.continueExtendedScanning()
       dsl.chase.stopExtendedScanning()
     end
   else
+    dsl.chase.stopExtendedScanning()
     dsl.chase.debug("Unable to continue extended scanning")
   end
 end
@@ -937,12 +961,18 @@ function dsl.chase.handleChaseAlias()
     return
   end
   
-  if sub1 == "min" then
+  if sub1 == "min" or sub1 == "minimum" then
     if rest == "" then
-      dsl.chase.state.minimumHp = nil
+      dsl.chase.state.minimumHp = 0
       dsl.chase.showStatus()
     else
-      dsl.chase.state.minimumHp = tonumber(rest)        
+      dsl.chase.state.minimumHp = tonumber(rest)
+      
+      if dsl.chase.state.minimumHp == nil
+        or dsl.chase.state.minimumHp == "" then
+        dsl.chase.state.minimumHp = 0
+      end
+            
       dsl.chase.showStatus()
     end
     return
@@ -995,6 +1025,12 @@ function dsl.chase.handleChaseAlias()
       return
     elseif sub2 == "distance" then
       dsl.chase.state.rangedDistance = tonumber(rest2)
+      
+      if dsl.chase.state.rangedDistance == nil
+        or dsl.chase.state.rangedDistance == "" then
+        dsl.chase.state.rangedDistance = 3
+      end
+      
       dsl.chase.showStatus()
       return
     else
@@ -1025,7 +1061,7 @@ function dsl.chase.handleChaseAlias()
   
   
   -- chase add/remove &lt;name or clan&gt;
-  -- or default of chase &lt;character&gt;
+  -- or default of chase &lt;character&gt; or chase &lt;command alias&gt;
   --if sub1 == "add" or sub1 == "remove" then
     local mode = sub1
     
@@ -1035,6 +1071,21 @@ function dsl.chase.handleChaseAlias()
 
     -- chase add/remove &lt;character name&gt;
     local charName = ""
+    local command = nil
+    
+    if dsl.chase.state.commandAliases ~= nil then
+      for alias, aliasCommand in pairs(dsl.chase.state.commandAliases) do
+        if alias == args then
+          command = aliasCommand
+        end
+      end
+    end
+    
+    if command ~= nil then
+      dsl.chase.state.command = command
+      dsl.chase.showStatus()
+      return
+    end
     
     if mode == "add" or mode == "remove" then
       charName = rest:match("^['\"]?(.-)['\"]?$") or rest
@@ -1084,29 +1135,82 @@ function dsl.chase.configureDefaultCharacter()
     
     local defaults = dsl.characters[gmcp.login_data.name].chase
     
-    dsl.chase.state.command = defaults.command
-    dsl.chase.state.rangedCommand = defaults.rangedCommand
-    dsl.chase.state.rangedDistance = tonumber(defaults.rangedDistance)
-    dsl.chase.state.minimumHp = tonumber(defaults.minimumHp)
+    if defaults.command ~= nil then
+      dsl.chase.state.command = defaults.command
+    else
+      dsl.chase.state.command = ""
+    end
+    
+    if defaults.rangedCommand ~= nil then
+      dsl.chase.state.rangedCommand = defaults.rangedCommand
+    else
+      dsl.chase.state.rangedCommand = ""
+    end
+    
+    if defaults.rangedDistance ~= nil
+      and type(defaults.rangedDistance) == 'number' then
+      dsl.chase.state.rangedDistance = tonumber(defaults.rangedDistance)
+      
+      if dsl.chase.state.rangedDistance == nil
+        or dsl.chase.state.rangedDistance == "" then
+        dsl.chase.state.rangedDistance = 3
+      end
+    else
+      dsl.chase.state.rangedDistance = 3
+    end
+    
+    if defaults.minimumHp ~= nil
+      and type(defaults.minimumHp) == 'number' then
+      dsl.chase.state.minimumHp = tonumber(defaults.minimumHp)
+      
+      if dsl.chase.state.minimumHp == nil
+        or dsl.chase.state.minimumHp == "" then
+        dsl.chase.state.minimumHp = 300
+      end
+    else
+      dsl.chase.state.minimumHp = 0
+    end
     
     if defaults.roomDisableList ~= nil
       and type(defaults.roomDisableList) == 'table' then
       dsl.chase.state.roomDisableList = defaults.roomDisableList
+    else
+      dsl.chase.state.roomDisableList = {}
+    end
+    
+    if defaults.commandAliases ~= nil
+      and type(defaults.commandAliases) == 'table' then
+      dsl.chase.state.commandAliases = defaults.commandAliases
+    else
+      dsl.chase.state.commandAliases = {}
     end
     
     if defaults.extendedScanning ~= nil
       and type(defaults.extendedScanning) == 'boolean' then
       dsl.chase.state.extendedScanning = defaults.extendedScanning
+    else
+      dsl.chase.state.extendedScanning = true
+    end
+    
+    if defaults.ranged ~= nil
+      and type(defaults.ranged) == 'boolean' then
+      dsl.chase.state.ranged = defaults.ranged
+    else
+      dsl.chase.state.ranged = false
     end
     
     if defaults.rangedFinish ~= nil
       and type(defaults.rangedFinish) == 'boolean' then
       dsl.chase.state.rangedFinish = defaults.rangedFinish
+    else
+      dsl.chase.state.rangedFinish = false
     end
     
     if defaults.rangedMove ~= nil
       and type(defaults.rangedMove) == 'boolean' then
       dsl.chase.state.rangedMove = defaults.rangedMove
+    else
+      dsl.chase.state.rangedMove = false
     end
 
     if defaults.clans ~= nil and type(defaults.clans) == 'table' then
@@ -1115,6 +1219,8 @@ function dsl.chase.configureDefaultCharacter()
       for _, clan in pairs(defaults.clans) do
         table.insert(dsl.chase.state.clans, clan)
       end
+    else
+      dsl.chase.state.clans = {}
     end
     
     dsl.chase.createWhoTrigger()

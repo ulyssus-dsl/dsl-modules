@@ -76,6 +76,25 @@ dsl.characters["Ulyssus"].chase = {
     "Hall of Illusions",
     "The Conclave Council Chambers",
   },
+
+  -- Optional list of short aliases that can be used to quickly
+  -- set the command without needing to type "chase command <command>"
+  -- and instead you can type "chase <command alias>"
+  -- such as "chase a" for acid blast without typing "chase command c acid"
+  commandAliases = {
+    ['1'] = "c 'acid blast'",
+    ['a'] = "c 'acid blast'",
+    ['ab'] = "c 'acid blast'",
+    ['2'] = "c disjunction",
+    ['d'] = "c disjunction",
+    ['dj'] = "c disjunction",
+    ['3'] = "c sleep",
+    ['s'] = "c sleep",
+    ['sl'] = "c sleep",
+    ['4'] = "c 'energy drain'",
+    ['e'] = "c 'energy drain'",
+    ['ed'] = "c 'energy drain'",
+  },
 }
 ```
 
@@ -86,6 +105,8 @@ DSL Chase has many features and modes.
 Type `chase` to see the current state and settings of the chase module. If you are currently fighting an opponent and wish to begin chasing them, type `chase` while fighting and it will enable the module and add your current opponent to the list of characters to chase.
 
 To begin chasing a specific character, use `chase <character name>` which will turn on chasing if it is turned off and add the provided character to the list of characters to chase. You can also chase all characters in a specific clan by typing `chase <clan name` which will check whoc to gather the list of current characters in the clan, and any time whoc is checked it will automatically add additional characters to the list that it finds for that clan.
+
+If your character is configured to have command aliases, you can type `chase <alias>` to quickly set your chase command to a predefined command.
 
 Type `chase on` or `chase off` to toggle Chase on or off.
 
