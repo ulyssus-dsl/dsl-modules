@@ -356,7 +356,7 @@ function dsl.chase.canChase(name)
     return false
   end
   
-  if dsl.chase.state.is_fighting then
+  if gmcp.char_data.is_fighting then
     dsl.chase.debug("Can't chase - Currently fighting")
     return false
   end
