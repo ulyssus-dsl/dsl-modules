@@ -418,7 +418,7 @@ function dsl.chase.chaseAndAttack(name, direction, distance)
 		end
     
     	if dsl.chase.state.ranged and direction ~= nil then
-      dsl.functions.debug("Ranging target with ranged command")
+      dsl.chase.debug("Ranging target with ranged command")
     		dsl.chase.send(dsl.chase.state.rangedCommand .. " " .. direction .. " " .. name)
         
       -- Ranged attack's have various success messages. Unset the attacking flag
@@ -434,7 +434,7 @@ function dsl.chase.chaseAndAttack(name, direction, distance)
           end
         end)
     	else
-      dsl.functions.debug("Attacking target with command")
+      dsl.chase.debug("Attacking target with command")
     		dsl.chase.send(dsl.chase.state.command .. " " .. name)
     	end
   end
@@ -544,14 +544,14 @@ function dsl.chase.setupResources()
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*), right here.",
     function()
-      dsl.functions.debug("Triggering chase trigger for current room from simple scan")
+      dsl.chase.debug("Triggering chase trigger for current room from simple scan")
     		dsl.chase.chaseAndAttack(matches.name)
     	end)
 
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*) has arrived through (.*)", 
     function()
-      dsl.functions.debug("Triggering chase trigger for entering through portal")
+      dsl.chase.debug("Triggering chase trigger for entering through portal")
       	dsl.chase.chaseAndAttack(matches.name)
   	   end)
 
@@ -568,7 +568,7 @@ function dsl.chase.setupResources()
     "resists your magic!",
     function()
       if dsl.chase.state.attacking then
-        dsl.functions.debug("Target resisted magic, scanning")
+        dsl.chase.debug("Target resisted magic, scanning")
         dsl.chase.stopAttacking()
       		if not gmcp.char_data.is_afk 
           and dsl.chase.state.scanning == nil
@@ -582,7 +582,7 @@ function dsl.chase.setupResources()
     "They aren't here.", 
     function()
       if dsl.chase.state.attacking then
-        dsl.functions.debug("Target not found, scanning")
+        dsl.chase.debug("Target not found, scanning")
         dsl.chase.stopAttacking()
       		if not gmcp.char_data.is_afk 
           and dsl.chase.state.scanning == nil
@@ -595,35 +595,35 @@ function dsl.chase.setupResources()
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*) appears in the room.", 
     function()
-      dsl.functions.debug("Triggering chase trigger for recalling")
+      dsl.chase.debug("Triggering chase trigger for recalling")
       	dsl.chase.chaseAndAttack(matches.name)
     	end)
 
 	dsl.chase.createRegexTrigger(
     "(\\(.*\\)\\s)?(?&lt;name&gt;[a-zA-Z-']*) (.*)?is (here|riding|resting|sitting|standing)(.*)", 
     function()
-      dsl.functions.debug("Triggering chase trigger for current room")
+      dsl.chase.debug("Triggering chase trigger for current room")
       	dsl.chase.chaseAndAttack(matches.name)
     	end)
 
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*), nearby to the (?&lt;direction&gt;.*).", 
     function()
-      dsl.functions.debug("Triggering chase trigger for nearby")
+      dsl.chase.debug("Triggering chase trigger for nearby")
       	dsl.chase.chaseAndAttack(matches.name, matches.direction, 1)
     	end)
 
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*), not far (?&lt;direction&gt;.*).", 
     function()
-      dsl.functions.debug("Triggering chase trigger for not far off")
+      dsl.chase.debug("Triggering chase trigger for not far off")
       	dsl.chase.chaseAndAttack(matches.name, matches.direction, 2)
     	end)
 
 	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*), off in the distance (?&lt;direction&gt;.*).", 
     function()
-      dsl.functions.debug("Triggering chase trigger for off in distance")
+      dsl.chase.debug("Triggering chase trigger for off in distance")
       	dsl.chase.chaseAndAttack(matches.name, matches.direction, 3)
     	end)
       
@@ -1126,7 +1126,7 @@ function dsl.chase.handleChaseAlias()
   --dsl.chase.error("Invalid command. Use:&lt;cyan&gt; chase help &lt;red&gt;to see commands")
 end
 
-function dsl.chase.configureDefaultCharacter()
+function dsl.chase.configureCharacterDefaults()
   if gmcp ~= nil and gmcp.login_data ~= nil
     and dsl.characters ~= nil
     and dsl.characters[gmcp.login_data.name] ~= nil
@@ -1234,7 +1234,7 @@ function dsl.chase.createModule()
   end
   
   dsl.chase.loginDataHandler = registerAnonymousEventHandler(
-    "gmcp.login_data", dsl.chase.configureDefaultCharacter)
+    "gmcp.login_data", dsl.chase.configureCharacterDefaults)
     
   if dsl.chase.uninstallHandler ~= nil then
     killAnonymousEventHandler(dsl.chase.uninstallHandler)
@@ -1328,7 +1328,7 @@ function dsl.chase.destroyModule()
 end
 
 dsl.chase.createModule()
-dsl.chase.configureDefaultCharacter()
+dsl.chase.configureCharacterDefaults()
 dsl.chase.showCommands()</script>
 			<eventHandlerList />
 		</Script>
