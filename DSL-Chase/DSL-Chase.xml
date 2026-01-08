@@ -18,6 +18,7 @@ dsl.chase.state = dsl.chase.state or {
     ranged = false,
     rangedFinish = false,
     rangedMove = false,
+    autoSummon = false,
     fighting = false,
     attacking = false,
     attackingName = nil,
@@ -492,9 +493,17 @@ function dsl.chase.setupResources()
   	   end)
 
 	dsl.chase.createRegexTrigger(
+    "(?&lt;name&gt;.*) disappears suddenly.", 
+    function()
+    		if dsl.chase.isOn() and dsl.chase.state.autoSummon and dsl.chase.isTarget(matches.name) then
+    			dsl.chase.send("c summon " .. matches.name)
+    		end
+    	end)
+
+	dsl.chase.createRegexTrigger(
     "(?&lt;name&gt;.*) goes to sleep.", 
     function()
-    		if dsl.chase.isTarget(matches.name) then
+    		if dsl.chase.isOn() and dsl.chase.isTarget(matches.name) then
     			dsl.chase.send("gtell " .. matches.name .. " slept at " .. gmcp.room_data.room)
     		end
     	end)
@@ -1134,6 +1143,13 @@ function dsl.chase.configureCharacterDefaults()
       dsl.chase.state.ranged = false
     end
     
+    if defaults.autoSummon ~= nil
+      and type(defaults.autoSummon) == 'boolean' then
+      dsl.chase.state.autoSummon = defaults.autoSummon
+    else
+      dsl.chase.state.autoSummon = false
+    end
+    
     if defaults.rangedFinish ~= nil
       and type(defaults.rangedFinish) == 'boolean' then
       dsl.chase.state.rangedFinish = defaults.rangedFinish
@@ -1274,7 +1290,7 @@ dsl.chase.showCommands()</script>
 			<eventHandlerList />
 		</Script>
 		<Script isActive="yes" isFolder="no">
-			<name>Sample Config</name>
+			<name>Sample Character Config</name>
 			<packageName></packageName>
 			<script>dsl = dsl or {}
 dsl.characters = dsl.characters or {}
@@ -1312,6 +1328,10 @@ dsl.characters["CharacterName"].chase = {
   -- Default value of whether extended scanning is enabled. 
   -- Extended scanning will scan all open directions if the initial scan does not locate the target
   extendedScanning = true,
+  
+  -- When autoSummon is set to true, if a targeted character disappears from being summoned
+  -- this will automatically try to summon them back
+  autoSummon = true,
   
   -- Default list of clans to add to the chase list
   clans = {},
