@@ -9,90 +9,8 @@
 		<Script isActive="yes" isFolder="no">
 			<name>DSL-Chase</name>
 			<packageName></packageName>
-			<script>-- TODO test with empty/missing defaults
-
-dsl = dsl or {}
+			<script>dsl = dsl or {}
 dsl.characters = dsl.characters or {}
-
--- Repeat the following configuration for each character needed.
--- The below configuration can be placed into a separate script file
--- outside of this module if desired.
-dsl.characters["Ulyssus"] = dsl.characters["Ulyssus"] or {}
-dsl.characters["Ulyssus"].chase = {
--- The default command to use when attacking
-  command = "c acid",
-  
-  -- Whether or not to enable ranged mode by default
-  ranged = false,
-  
-  -- The default command to use when using ranged attacks
-  rangedCommand = "c fireball",
-  
-  -- The max distance in rooms of the ranged command
-  rangedDistance = 3,
-  
-  -- Whether to enable ranged finish mode by default. 
-  -- This will cast your ranged attack in each open direction when the opponent flees at awful.
-  rangedFinish = true,
-  
-  -- When using ranged mode, if the default value is true will move the character one room in 
-  -- the opposite direction if able to before using the ranged attack
-  rangedMove = true,
-  
-  -- Default minimum HP. Chasing will stop once HP is below this
-  minimumHp = 350,
-  
-  -- Default value of whether extended scanning is enabled. 
-  -- Extended scanning will scan all open directions if the initial scan does not locate the target
-  extendedScanning = true,
-  
-  -- Default list of clans to add to the chase list
-  clans = {},
-  
-  -- A list of rooms in which chasing actions (scanning, attacking, etc)
-  -- will be disabled while in these rooms, even if chasing is currently on
-  roomDisableList = {
-    "Conclave Common Room",
-    "Center Hall of the White Tower",
-    "The Library of the White Tower",
-    "Entrance Hall of the White Tower",
-    "A classroom",
-    "Practice room",
-    "The Meeting Room of the White Robes",
-    "Third Floor of the White Tower",
-    "Tower Stables",
-    "The Apothecary",
-    "Meeting Room",
-    "Healing Chambers",
-    "An Arcane Vault",
-    "The Arcanist's Craftstation",
-    "Central Hall of Advanced Studies",
-    "Shrine of Magic",
-    "The Conclave Portal Room",
-    "Hall of Illusions",
-    "The Conclave Council Chambers",
-  },
-  
-  -- Optional list of short aliases that can be used to quickly
-  -- set the command without needing to type "chase command &lt;command&gt;"
-  -- and instead you can type "chase &lt;command alias&gt;"
-  -- such as "chase a" for acid blast without typing "chase command c acid"
-  commandAliases = {
-    ['1'] = "c 'acid blast'",
-    ['a'] = "c 'acid blast'",
-    ['ab'] = "c 'acid blast'",
-    ['2'] = "c disjunction",
-    ['d'] = "c disjunction",
-    ['dj'] = "c disjunction",
-    ['3'] = "c sleep",
-    ['s'] = "c sleep",
-    ['sl'] = "c sleep",
-    ['4'] = "c 'energy drain'",
-    ['e'] = "c 'energy drain'",
-    ['ed'] = "c 'energy drain'",
-  },
-}
-
 dsl.chase = dsl.chase or {}
 dsl.chase.state = dsl.chase.state or {
     on = false,
@@ -110,7 +28,7 @@ dsl.chase.state = dsl.chase.state or {
     opponent = nil,
     opponentHpPercent = nil,
     minimumHp = 300,
-    command = "",
+    command = "murder",
     rangedCommand = "",
     rangedDistance = 3,
     characters = {},
@@ -149,6 +67,16 @@ local DIRECTION_OPPOSITES = {
   ["southwest"] = "northeast",
   ["northeast"] = "southwest",
   ["northwest"] = "southeast"
+}
+
+local RESTRICTED_ROOMS = {
+  "AGL Betting Window",
+  "The Entry to the Algoron Gladiator League Coliseum",
+  "The Southern Arena Stands",
+  "The Southern Arena Stands (Upper Deck)",
+  "The Northern Arena Stands",
+  "The Northern Arena Stands (Upper Deck)",
+  "The AGL Hall of Champions",
 }
 
 function dsl.chase.send(cmd)  
@@ -207,6 +135,14 @@ function dsl.chase.isOn()
   for _, room in pairs(dsl.chase.state.roomDisableList) do
     if gmcp.room_data.room == room then
       inDisabledRoom = true
+    end
+  end
+  
+  if not inDisabledRoom then
+    for _, room in pairs(RESTRICTED_ROOMS) do
+      if gmcp.room_data.room == room then
+        inDisabledRoom = true
+      end
     end
   end
   
@@ -559,7 +495,6 @@ function dsl.chase.setupResources()
     "(?&lt;name&gt;.*) goes to sleep.", 
     function()
     		if dsl.chase.isTarget(matches.name) then
-    			--dsl.functions.speak(dsl.state.pvptarget .. " slept")
     			dsl.chase.send("gtell " .. matches.name .. " slept at " .. gmcp.room_data.room)
     		end
     	end)
@@ -1135,10 +1070,10 @@ function dsl.chase.configureCharacterDefaults()
     
     local defaults = dsl.characters[gmcp.login_data.name].chase
     
-    if defaults.command ~= nil then
+    if defaults.command ~= nil and defaults.command ~= "" then
       dsl.chase.state.command = defaults.command
     else
-      dsl.chase.state.command = ""
+      dsl.chase.state.command = "murder"
     end
     
     if defaults.rangedCommand ~= nil then
@@ -1268,26 +1203,32 @@ function dsl.chase.createModule()
         dsl.chase.doRangedFinishIfNeeded()
       end
       
-      dsl.chase.state.opponent = matches.target
+      if dsl.chase.isTarget(matches.target) then
+        dsl.chase.state.opponent = matches.target
       
-      if matches[3] == 'is in excellent condition.' then
-        dsl.chase.state.opponentHpPercent = 100
-      elseif matches[3] == 'has a few scratches.' then
-        dsl.chase.state.opponentHpPercent = 99
-      elseif matches[3] == 'has some small wounds and bruises.' then
-        dsl.chase.state.opponentHpPercent = 89
-      elseif matches[3] == 'has quite a few wounds.' then
-        dsl.chase.state.opponentHpPercent = 74
-      elseif matches[3] == 'has some big nasty wounds and scratches.' then
-        dsl.chase.state.opponentHpPercent = 49
-      elseif matches[3] == 'looks pretty hurt.' then
-        dsl.chase.state.opponentHpPercent = 29
-      elseif matches[3] == 'is in awful condition.' then
-        dsl.chase.state.opponentHpPercent = 14
+        if matches[3] == 'is in excellent condition.' then
+          dsl.chase.state.opponentHpPercent = 100
+        elseif matches[3] == 'has a few scratches.' then
+          dsl.chase.state.opponentHpPercent = 99
+        elseif matches[3] == 'has some small wounds and bruises.' then
+          dsl.chase.state.opponentHpPercent = 89
+        elseif matches[3] == 'has quite a few wounds.' then
+          dsl.chase.state.opponentHpPercent = 74
+        elseif matches[3] == 'has some big nasty wounds and scratches.' then
+          dsl.chase.state.opponentHpPercent = 49
+        elseif matches[3] == 'looks pretty hurt.' then
+          dsl.chase.state.opponentHpPercent = 29
+        elseif matches[3] == 'is in awful condition.' then
+          dsl.chase.state.opponentHpPercent = 14
+        end
+        
+        dsl.chase.debug("Fighting " ..dsl.chase.state.opponent
+          .." with " ..dsl.chase.state.opponentHpPercent .."% HP")
+      else
+        dsl.chase.debug("Invalid opponent. Skipping")
+        dsl.chase.state.opponent = nil
+        dsl.chase.state.opponentHpPercent = nil
       end
-      
-      dsl.chase.debug("Fighting " ..dsl.chase.state.opponent
-        .." with " ..dsl.chase.state.opponentHpPercent .."% HP")
     end)
     
   for _, aliasId in pairs(dsl.chase.aliases) do
@@ -1330,6 +1271,94 @@ end
 dsl.chase.createModule()
 dsl.chase.configureCharacterDefaults()
 dsl.chase.showCommands()</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>Sample Config</name>
+			<packageName></packageName>
+			<script>dsl = dsl or {}
+dsl.characters = dsl.characters or {}
+
+-- Repeat the following configuration for each character needed.
+-- Change CharacterName to your desired character's name.
+-- The below configuration can be placed into a separate script file
+-- outside of this module if desired.
+
+dsl.characters["CharacterName"] = dsl.characters["CharacterName"] or {}
+dsl.characters["CharacterName"].chase = {
+  -- The default command to use when attacking
+  command = "c acid",
+  
+  -- Whether or not to enable ranged mode by default
+  ranged = false,
+  
+  -- The default command to use when using ranged attacks
+  rangedCommand = "c fireball",
+  
+  -- The max distance in rooms of the ranged command
+  rangedDistance = 3,
+  
+  -- Whether to enable ranged finish mode by default. 
+  -- This will cast your ranged attack in each open direction when the opponent flees at awful.
+  rangedFinish = true,
+  
+  -- When using ranged mode, if the default value is true will move the character one room in 
+  -- the opposite direction if able to before using the ranged attack
+  rangedMove = true,
+  
+  -- Default minimum HP. Chasing will stop once HP is below this
+  minimumHp = 350,
+  
+  -- Default value of whether extended scanning is enabled. 
+  -- Extended scanning will scan all open directions if the initial scan does not locate the target
+  extendedScanning = true,
+  
+  -- Default list of clans to add to the chase list
+  clans = {},
+  
+  -- A list of rooms in which chasing actions (scanning, attacking, etc)
+  -- will be disabled while in these rooms, even if chasing is currently on
+  roomDisableList = {
+    "Conclave Common Room",
+    "Center Hall of the White Tower",
+    "The Library of the White Tower",
+    "Entrance Hall of the White Tower",
+    "A classroom",
+    "Practice room",
+    "The Meeting Room of the White Robes",
+    "Third Floor of the White Tower",
+    "Tower Stables",
+    "The Apothecary",
+    "Meeting Room",
+    "Healing Chambers",
+    "An Arcane Vault",
+    "The Arcanist's Craftstation",
+    "Central Hall of Advanced Studies",
+    "Shrine of Magic",
+    "The Conclave Portal Room",
+    "Hall of Illusions",
+    "The Conclave Council Chambers",
+  },
+  
+  -- Optional list of short aliases that can be used to quickly
+  -- set the command without needing to type "chase command &amp;lt;command&amp;gt;"
+  -- and instead you can type "chase &amp;lt;command alias&amp;gt;"
+  -- such as "chase a" for acid blast without typing "chase command c acid"
+  commandAliases = {
+    ['1'] = "c 'acid blast'",
+    ['a'] = "c 'acid blast'",
+    ['ab'] = "c 'acid blast'",
+    ['2'] = "c disjunction",
+    ['d'] = "c disjunction",
+    ['dj'] = "c disjunction",
+    ['3'] = "c sleep",
+    ['s'] = "c sleep",
+    ['sl'] = "c sleep",
+    ['4'] = "c 'energy drain'",
+    ['e'] = "c 'energy drain'",
+    ['ed'] = "c 'energy drain'",
+  },
+}</script>
 			<eventHandlerList />
 		</Script>
 	</ScriptPackage>
