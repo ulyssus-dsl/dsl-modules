@@ -12,7 +12,7 @@ Verify gmcp is enabled on your characters by typing the command `gmcp` in DSL if
 
 Configuration for DSL Chase is not necessary, but will make it easier to use by allowing for default configurations to be set for each character without having to set them manually.
 
-To configure a character, with the module installed in "sync" mode update the following at the top of the file for each character needed. The following configuration can be put into a separate script if desired as well instead of updated in the module itself.
+To configure a character, under scripts -> DSL-Chase, copy the Sample Character Configuration script and paste a copy of it somewhere else in the Mudlet scripts, then replace the "CharacterName" with your desired character's name and update the configuration as needed.
 
 ```lua
 dsl = dsl or {}
@@ -21,8 +21,8 @@ dsl.characters = dsl.characters or {}
 -- Repeat the following configuration for each character needed.
 -- The below configuration can be placed into a separate script file
 -- outside of this module if desired.
-dsl.characters["Ulyssus"] = dsl.characters["Ulyssus"] or {}
-dsl.characters["Ulyssus"].chase = {
+dsl.characters["CharacterName"] = dsl.characters["CharacterName"] or {}
+dsl.characters["CharacterName"].chase = {
 -- The default command to use when attacking
   command = "c acid",
 
@@ -49,6 +49,10 @@ dsl.characters["Ulyssus"].chase = {
   -- Default value of whether extended scanning is enabled. 
   -- Extended scanning will scan all open directions if the initial scan does not locate the target
   extendedScanning = true,
+
+  -- When autoSummon is set to true, if a targeted character disappears from being summoned
+  -- this will automatically try to summon them back
+  autoSummon = true,
  
   -- Default list of clans to add to the chase list
   clans = {},
